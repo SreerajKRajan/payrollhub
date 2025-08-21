@@ -191,7 +191,7 @@ export function PayrollDashboard() {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className={`grid w-full ${showTimeClockTab ? 'grid-cols-4 lg:w-[500px]' : 'grid-cols-3 lg:w-[400px]'}`}>
+          <TabsList className={`grid w-full ${showTimeClockTab ? (isAdmin ? 'grid-cols-4 lg:w-[500px]' : 'grid-cols-3 lg:w-[400px]') : (isAdmin ? 'grid-cols-3 lg:w-[400px]' : 'grid-cols-2 lg:w-[300px]')}`}>
             {showTimeClockTab && (
               <TabsTrigger value="timetracking" className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
@@ -206,10 +206,12 @@ export function PayrollDashboard() {
               <TrendingUp className="h-4 w-4" />
               Reports
             </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <SettingsIcon className="h-4 w-4" />
-              Settings
-            </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="settings" className="flex items-center gap-2">
+                <SettingsIcon className="h-4 w-4" />
+                Settings
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {showTimeClockTab && (
@@ -226,9 +228,11 @@ export function PayrollDashboard() {
             <PayoutsReport refreshToken={stats.monthlyHourlyPayouts + stats.monthlyProjectPayouts} isAdmin={isAdmin} currentUser={currentUser} />
           </TabsContent>
 
-          <TabsContent value="settings" className="space-y-6">
-            <Settings onStatsUpdate={fetchStats} />
-          </TabsContent>
+          {isAdmin && (
+            <TabsContent value="settings" className="space-y-6">
+              <Settings onStatsUpdate={fetchStats} />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>
