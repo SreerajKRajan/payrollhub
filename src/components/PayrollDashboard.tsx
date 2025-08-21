@@ -10,6 +10,7 @@ import { PayrollCalculator } from "./PayrollCalculator";
 export function PayrollDashboard() {
   const [activeTab, setActiveTab] = useState("employees");
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState(null);
 
   const stats = [
     {
@@ -95,7 +96,13 @@ export function PayrollDashboard() {
           </TabsList>
 
           <TabsContent value="employees" className="space-y-6">
-            <EmployeeList onAddEmployee={() => setShowEmployeeForm(true)} />
+            <EmployeeList 
+              onAddEmployee={() => setShowEmployeeForm(true)}
+              onEditEmployee={(employee) => {
+                setEditingEmployee(employee);
+                setShowEmployeeForm(true);
+              }}
+            />
           </TabsContent>
 
           <TabsContent value="calculator" className="space-y-6">
@@ -123,8 +130,15 @@ export function PayrollDashboard() {
         {/* Employee Form Modal */}
         {showEmployeeForm && (
           <EmployeeForm 
-            onClose={() => setShowEmployeeForm(false)} 
-            onSuccess={() => setShowEmployeeForm(false)}
+            employee={editingEmployee}
+            onClose={() => {
+              setShowEmployeeForm(false);
+              setEditingEmployee(null);
+            }} 
+            onSuccess={() => {
+              setShowEmployeeForm(false);
+              setEditingEmployee(null);
+            }}
           />
         )}
       </div>

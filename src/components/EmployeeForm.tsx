@@ -11,6 +11,24 @@ import { useToast } from "@/hooks/use-toast";
 interface EmployeeFormProps {
   onClose: () => void;
   onSuccess: () => void;
+  employee?: Employee | null;
+}
+
+interface Employee {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  department: string;
+  position: string;
+  status: 'active' | 'inactive' | 'on_leave';
+  pay_scale_type: 'hourly' | 'project';
+  hourly_rate?: number;
+  project_rate_1_member?: number;
+  project_rate_2_members?: number;
+  project_rate_3_members?: number;
+  project_rate_4_members?: number;
+  project_rate_5_members?: number;
 }
 
 interface FormData {
@@ -29,21 +47,21 @@ interface FormData {
   project_rate_5_members: string;
 }
 
-export function EmployeeForm({ onClose, onSuccess }: EmployeeFormProps) {
+export function EmployeeForm({ onClose, onSuccess, employee }: EmployeeFormProps) {
   const [formData, setFormData] = useState<FormData>({
-    name: '',
-    email: '',
-    phone: '',
-    department: '',
-    position: '',
-    status: 'active',
-    pay_scale_type: 'hourly',
-    hourly_rate: '',
-    project_rate_1_member: '',
-    project_rate_2_members: '',
-    project_rate_3_members: '',
-    project_rate_4_members: '',
-    project_rate_5_members: '',
+    name: employee?.name || '',
+    email: employee?.email || '',
+    phone: employee?.phone || '',
+    department: employee?.department || '',
+    position: employee?.position || '',
+    status: employee?.status || 'active',
+    pay_scale_type: employee?.pay_scale_type || 'hourly',
+    hourly_rate: employee?.hourly_rate?.toString() || '',
+    project_rate_1_member: employee?.project_rate_1_member?.toString() || '',
+    project_rate_2_members: employee?.project_rate_2_members?.toString() || '',
+    project_rate_3_members: employee?.project_rate_3_members?.toString() || '',
+    project_rate_4_members: employee?.project_rate_4_members?.toString() || '',
+    project_rate_5_members: employee?.project_rate_5_members?.toString() || '',
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -77,23 +95,39 @@ export function EmployeeForm({ onClose, onSuccess }: EmployeeFormProps) {
         employeeData.project_rate_5_members = parseFloat(formData.project_rate_5_members) || null;
       }
 
-      const { error } = await supabase
-        .from('employees')
-        .insert([employeeData]);
+      if (employee) {
+        // Update existing employee
+        const { error } = await supabase
+          .from('employees')
+          .update(employeeData)
+          .eq('id', employee.id);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "Employee added successfully",
-      });
+        toast({
+          title: "Success",
+          description: "Employee updated successfully",
+        });
+      } else {
+        // Add new employee
+        const { error } = await supabase
+          .from('employees')
+          .insert([employeeData]);
+
+        if (error) throw error;
+
+        toast({
+          title: "Success",
+          description: "Employee added successfully",
+        });
+      }
       
       onSuccess();
     } catch (error) {
-      console.error('Error adding employee:', error);
+      console.error(`Error ${employee ? 'updating' : 'adding'} employee:`, error);
       toast({
         title: "Error",
-        description: "Failed to add employee",
+        description: `Failed to ${employee ? 'update' : 'add'} employee`,
         variant: "destructive",
       });
     } finally {
@@ -106,8 +140,10 @@ export function EmployeeForm({ onClose, onSuccess }: EmployeeFormProps) {
       <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-elegant">
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <div>
-            <CardTitle>Add Team Member</CardTitle>
-            <CardDescription>Create a new employee profile with pay settings</CardDescription>
+            <CardTitle>{employee ? 'Edit Team Member' : 'Add Team Member'}</CardTitle>
+            <CardDescription>
+              {employee ? 'Update employee profile and pay settings' : 'Create a new employee profile with pay settings'}
+            </CardDescription>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-4 w-4" />
@@ -288,7 +324,7 @@ export function EmployeeForm({ onClose, onSuccess }: EmployeeFormProps) {
                 Cancel
               </Button>
               <Button type="submit" variant="gradient" disabled={loading} className="flex-1">
-                {loading ? "Adding..." : "Add Employee"}
+                {loading ? (employee ? "Updating..." : "Adding...") : (employee ? "Update Employee" : "Add Employee")}
               </Button>
             </div>
           </form>

@@ -25,9 +25,10 @@ interface Employee {
 
 interface EmployeeListProps {
   onAddEmployee: () => void;
+  onEditEmployee: (employee: Employee) => void;
 }
 
-export function EmployeeList({ onAddEmployee }: EmployeeListProps) {
+export function EmployeeList({ onAddEmployee, onEditEmployee }: EmployeeListProps) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -170,7 +171,11 @@ export function EmployeeList({ onAddEmployee }: EmployeeListProps) {
                   <Badge className={getStatusColor(employee.status)}>
                     {employee.status.replace('_', ' ')}
                   </Badge>
-                  <Button variant="ghost" size="icon">
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => onEditEmployee(employee)}
+                  >
                     <Edit className="h-4 w-4" />
                   </Button>
                   <Button 
