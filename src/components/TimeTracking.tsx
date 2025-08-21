@@ -1,0 +1,400 @@
+import { useState, useEffect } from "react";
+import { Clock, CheckCircle, XCircle, Calendar } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
+import { format, differenceInHours, differenceInMinutes } from "date-fns";
+
+interface Employee {
+  id: string;
+  name: string;
+  pay_scale_type: "hourly" | "project";
+  status: "active" | "inactive" | "on_leave";
+}
+
+interface TimeEntry {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  check_in_time: string;
+  check_out_time?: string;
+  total_hours?: number;
+  status: string;
+  notes?: string;
+  created_at: string;
+}
+
+export function TimeTracking() {
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+  const [selectedEmployee, setSelectedEmployee] = useState<string>("");
+  const [notes, setNotes] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchEmployees();
+    fetchTimeEntries();
+  }, []);
+
+  const fetchEmployees = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('id, name, pay_scale_type, status')
+        .eq('status', 'active')
+        .eq('pay_scale_type', 'hourly')
+        .order('name');
+      
+      if (error) throw error;
+      setEmployees(data || []);
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load employees",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchTimeEntries = async () => {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const { data, error } = await supabase
+        .from('time_entries')
+        .select('*')
+        .gte('check_in_time', today.toISOString())
+        .order('check_in_time', { ascending: false });
+      
+      if (error) throw error;
+      setTimeEntries(data || []);
+    } catch (error) {
+      console.error('Error fetching time entries:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load time entries",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCheckIn = async () => {
+    if (!selectedEmployee) {
+      toast({
+        title: "Error",
+        description: "Please select an employee",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const employee = employees.find(emp => emp.id === selectedEmployee);
+    if (!employee) return;
+
+    // Check if employee is already checked in
+    const existingEntry = timeEntries.find(
+      entry => entry.employee_id === selectedEmployee && entry.status === 'checked_in'
+    );
+
+    if (existingEntry) {
+      toast({
+        title: "Already Checked In",
+        description: `${employee.name} is already checked in`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('time_entries')
+        .insert([{
+          employee_id: selectedEmployee,
+          employee_name: employee.name,
+          check_in_time: new Date().toISOString(),
+          notes: notes || null,
+          status: 'checked_in'
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setTimeEntries(prev => [data, ...prev]);
+      setNotes("");
+      setSelectedEmployee("");
+      
+      toast({
+        title: "Success",
+        description: `${employee.name} checked in successfully`,
+      });
+    } catch (error) {
+      console.error('Error checking in:', error);
+      toast({
+        title: "Error",
+        description: "Failed to check in",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCheckOut = async (entryId: string) => {
+    const entry = timeEntries.find(e => e.id === entryId);
+    if (!entry) return;
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('time_entries')
+        .update({
+          check_out_time: new Date().toISOString(),
+          status: 'checked_out'
+        })
+        .eq('id', entryId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setTimeEntries(prev => 
+        prev.map(entry => entry.id === entryId ? data : entry)
+      );
+
+      toast({
+        title: "Success",
+        description: `${entry.employee_name} checked out successfully`,
+      });
+    } catch (error) {
+      console.error('Error checking out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to check out",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getWorkingTime = (checkInTime: string, checkOutTime?: string) => {
+    const startTime = new Date(checkInTime);
+    const endTime = checkOutTime ? new Date(checkOutTime) : new Date();
+    
+    const totalMinutes = differenceInMinutes(endTime, startTime);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    
+    return `${hours}h ${minutes}m`;
+  };
+
+  const checkedInEmployees = timeEntries.filter(entry => entry.status === 'checked_in');
+  const todayEntries = timeEntries.filter(entry => {
+    const entryDate = new Date(entry.check_in_time);
+    const today = new Date();
+    return entryDate.toDateString() === today.toDateString();
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Header Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="shadow-card">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <Clock className="h-5 w-5 text-primary" />
+              <div>
+                <p className="text-sm text-muted-foreground">Currently Working</p>
+                <p className="text-2xl font-bold">{checkedInEmployees.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="shadow-card">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <Calendar className="h-5 w-5 text-success" />
+              <div>
+                <p className="text-sm text-muted-foreground">Today's Entries</p>
+                <p className="text-2xl font-bold">{todayEntries.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="shadow-card">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="h-5 w-5 text-accent" />
+              <div>
+                <p className="text-sm text-muted-foreground">Completed Today</p>
+                <p className="text-2xl font-bold">
+                  {todayEntries.filter(e => e.status === 'checked_out').length}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Check-in Form */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Employee Check-in
+          </CardTitle>
+          <CardDescription>
+            Select an employee to check them in for their shift
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select employee" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees.map((employee) => (
+                    <SelectItem key={employee.id} value={employee.id}>
+                      {employee.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1">
+              <Textarea
+                placeholder="Add notes (optional)"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="min-h-[40px] max-h-[80px]"
+              />
+            </div>
+            <Button 
+              onClick={handleCheckIn}
+              disabled={isLoading || !selectedEmployee}
+              className="whitespace-nowrap"
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Check In
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Active Sessions */}
+      {checkedInEmployees.length > 0 && (
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
+              Active Sessions
+            </CardTitle>
+            <CardDescription>
+              Employees currently checked in
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {checkedInEmployees.map((entry) => (
+                <div 
+                  key={entry.id} 
+                  className="flex items-center justify-between p-4 border rounded-lg bg-primary/5"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-3 h-3 bg-primary rounded-full animate-pulse"></div>
+                    <div>
+                      <p className="font-medium">{entry.employee_name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Started: {format(new Date(entry.check_in_time), 'HH:mm')}
+                        {entry.notes && ` • ${entry.notes}`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Badge variant="outline" className="text-primary border-primary">
+                      {getWorkingTime(entry.check_in_time)}
+                    </Badge>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleCheckOut(entry.id)}
+                      disabled={isLoading}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Check Out
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Today's History */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Today's Time Entries
+          </CardTitle>
+          <CardDescription>
+            All check-ins and check-outs for today
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {todayEntries.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              No time entries for today yet
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {todayEntries.map((entry) => (
+                <div 
+                  key={entry.id} 
+                  className="flex items-center justify-between p-4 border rounded-lg"
+                >
+                  <div>
+                    <p className="font-medium">{entry.employee_name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {format(new Date(entry.check_in_time), 'HH:mm')}
+                      {entry.check_out_time && (
+                        <> - {format(new Date(entry.check_out_time), 'HH:mm')}</>
+                      )}
+                      {entry.notes && ` • ${entry.notes}`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge 
+                      variant={entry.status === 'checked_in' ? 'default' : 'secondary'}
+                    >
+                      {entry.status === 'checked_in' ? 'Active' : 'Completed'}
+                    </Badge>
+                    {entry.total_hours && (
+                      <Badge variant="outline">
+                        {entry.total_hours.toFixed(2)}h
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

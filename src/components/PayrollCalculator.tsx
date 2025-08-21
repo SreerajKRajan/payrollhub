@@ -22,6 +22,17 @@ interface Employee {
   project_rate_5_members?: number;
 }
 
+interface TimeEntry {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  check_in_time: string;
+  check_out_time?: string;
+  total_hours?: number;
+  status: string;
+  created_at: string;
+}
+
 interface PayoutResult {
   employeeId: string;
   employeeName: string;
@@ -42,11 +53,20 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
   const [isFirstTime, setIsFirstTime] = useState(false);
   const [payoutResults, setPayoutResults] = useState<PayoutResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [useTrackedHours, setUseTrackedHours] = useState(false);
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+  const [selectedTimeEntries, setSelectedTimeEntries] = useState<string[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchEmployees();
   }, []);
+
+  useEffect(() => {
+    if (calculationType === 'hourly' && useTrackedHours) {
+      fetchTimeEntries();
+    }
+  }, [calculationType, useTrackedHours, selectedEmployees]);
 
   const fetchEmployees = async () => {
     try {
@@ -69,22 +89,51 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
     }
   };
 
-  const calculateHours = () => {
-    if (!startTime || !endTime) return 0;
+  const fetchTimeEntries = async () => {
+    if (selectedEmployees.length === 0) return;
     
-    const [startHour, startMin] = startTime.split(':').map(Number);
-    const [endHour, endMin] = endTime.split(':').map(Number);
-    
-    const startMinutes = startHour * 60 + startMin;
-    const endMinutes = endHour * 60 + endMin;
-    
-    let totalMinutes = endMinutes - startMinutes;
-    if (totalMinutes < 0) {
-      // Handle overnight work (end time is next day)
-      totalMinutes = (24 * 60) - startMinutes + endMinutes;
+    try {
+      const { data, error } = await supabase
+        .from('time_entries')
+        .select('*')
+        .in('employee_id', selectedEmployees)
+        .eq('status', 'checked_out')
+        .not('total_hours', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      if (error) throw error;
+      setTimeEntries(data || []);
+    } catch (error) {
+      console.error('Error fetching time entries:', error);
     }
-    
-    return totalMinutes / 60;
+  };
+
+  const calculateHours = () => {
+    if (useTrackedHours) {
+      // Sum up selected time entries
+      return selectedTimeEntries.reduce((total, entryId) => {
+        const entry = timeEntries.find(e => e.id === entryId);
+        return total + (entry?.total_hours || 0);
+      }, 0);
+    } else {
+      // Manual time calculation
+      if (!startTime || !endTime) return 0;
+      
+      const [startHour, startMin] = startTime.split(':').map(Number);
+      const [endHour, endMin] = endTime.split(':').map(Number);
+      
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+      
+      let totalMinutes = endMinutes - startMinutes;
+      if (totalMinutes < 0) {
+        // Handle overnight work (end time is next day)
+        totalMinutes = (24 * 60) - startMinutes + endMinutes;
+      }
+      
+      return totalMinutes / 60;
+    }
   };
 
   const toggleEmployeeSelection = (employeeId: string) => {
@@ -332,30 +381,97 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
               />
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="start-time">Start Time</Label>
-                <Input
-                  id="start-time"
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                />
+            <div className="space-y-4">
+              {/* Time Entry Method Toggle */}
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="use-tracked"
+                    checked={useTrackedHours}
+                    onCheckedChange={(checked) => setUseTrackedHours(checked === true)}
+                  />
+                  <Label htmlFor="use-tracked" className="text-sm font-medium">
+                    Use tracked hours from time clock
+                  </Label>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="end-time">End Time</Label>
-                <Input
-                  id="end-time"
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                />
-              </div>
-              {startTime && endTime && (
-                <div className="col-span-1 md:col-span-2">
-                  <Badge variant="outline" className="text-sm">
-                    Total Hours: {calculateHours().toFixed(2)} hrs
-                  </Badge>
+
+              {useTrackedHours ? (
+                <div className="space-y-4">
+                  <Label>Select Time Entries</Label>
+                  {timeEntries.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Clock className="h-8 w-8 mx-auto mb-2" />
+                      <p>No completed time entries found for selected employees</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {timeEntries.map((entry) => (
+                        <div
+                          key={entry.id}
+                          className={`p-3 border rounded-lg cursor-pointer transition-all ${
+                            selectedTimeEntries.includes(entry.id)
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border hover:border-accent'
+                          }`}
+                          onClick={() => {
+                            setSelectedTimeEntries(prev =>
+                              prev.includes(entry.id)
+                                ? prev.filter(id => id !== entry.id)
+                                : [...prev, entry.id]
+                            );
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium">{entry.employee_name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(entry.check_in_time).toLocaleDateString()} • {entry.total_hours?.toFixed(2)}h
+                              </p>
+                            </div>
+                            <div className={`w-4 h-4 rounded-full border-2 ${
+                              selectedTimeEntries.includes(entry.id)
+                                ? 'bg-primary border-primary'
+                                : 'border-muted-foreground'
+                            }`} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {selectedTimeEntries.length > 0 && (
+                    <Badge variant="outline" className="text-sm">
+                      Total Hours: {calculateHours().toFixed(2)} hrs
+                    </Badge>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="start-time">Start Time</Label>
+                    <Input
+                      id="start-time"
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="end-time">End Time</Label>
+                    <Input
+                      id="end-time"
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                    />
+                  </div>
+                  {startTime && endTime && (
+                    <div className="col-span-1 md:col-span-2">
+                      <Badge variant="outline" className="text-sm">
+                        Total Hours: {calculateHours().toFixed(2)} hrs
+                      </Badge>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -431,7 +547,7 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
             variant="gradient" 
             size="lg" 
             className="w-full"
-            disabled={selectedEmployees.length === 0 || (calculationType === 'project' ? !projectValue : !startTime || !endTime)}
+            disabled={selectedEmployees.length === 0 || (calculationType === 'project' ? !projectValue : useTrackedHours ? selectedTimeEntries.length === 0 : (!startTime || !endTime))}
           >
             <Calculator className="h-5 w-5 mr-2" />
             Calculate Payouts

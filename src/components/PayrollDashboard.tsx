@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { Users, Calculator, DollarSign, TrendingUp } from "lucide-react";
+import { Users, Calculator, DollarSign, TrendingUp, Clock } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmployeeList } from "./EmployeeList";
 import { EmployeeForm } from "./EmployeeForm";
 import { PayrollCalculator } from "./PayrollCalculator";
+import { TimeTracking } from "./TimeTracking";
 import { supabase } from "@/integrations/supabase/client";
 import { PayoutsReport } from "./PayoutsReport";
 export function PayrollDashboard() {
@@ -134,10 +135,14 @@ export function PayrollDashboard() {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+          <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
             <TabsTrigger value="employees" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Employees
+            </TabsTrigger>
+            <TabsTrigger value="timetracking" className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Time Clock
             </TabsTrigger>
             <TabsTrigger value="calculator" className="flex items-center gap-2">
               <Calculator className="h-4 w-4" />
@@ -157,6 +162,10 @@ export function PayrollDashboard() {
                 setShowEmployeeForm(true);
               }}
             />
+          </TabsContent>
+
+          <TabsContent value="timetracking" className="space-y-6">
+            <TimeTracking />
           </TabsContent>
 
           <TabsContent value="calculator" className="space-y-6">
