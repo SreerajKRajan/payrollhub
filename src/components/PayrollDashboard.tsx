@@ -18,6 +18,8 @@ export function PayrollDashboard() {
   });
   const [selectedEmployee, setSelectedEmployee] = useState<{id: string; name: string} | null>(null);
   const [showTimeClockTab, setShowTimeClockTab] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{id: string; name: string; email: string} | null>(null);
 
   useEffect(() => {
     fetchStats();
@@ -32,7 +34,7 @@ export function PayrollDashboard() {
       try {
         const { data: employee, error } = await supabase
           .from('employees')
-          .select('id, name, email, pay_scale_type, status')
+          .select('id, name, email, pay_scale_type, status, is_admin')
           .eq('email', email)
           .eq('status', 'active')
           .single();
@@ -40,23 +42,38 @@ export function PayrollDashboard() {
         if (error) {
           console.log('Employee not found or error:', error);
           setShowTimeClockTab(false);
+          setIsAdmin(false);
+          setCurrentUser(null);
           return;
         }
 
-        if (employee && employee.pay_scale_type === 'hourly') {
-          setSelectedEmployee({ id: employee.id, name: employee.name });
-          setShowTimeClockTab(true);
-          setActiveTab("timetracking");
+        if (employee) {
+          setCurrentUser({ id: employee.id, name: employee.name, email: employee.email });
+          setIsAdmin(employee.is_admin || false);
+          
+          if (employee.pay_scale_type === 'hourly') {
+            setSelectedEmployee({ id: employee.id, name: employee.name });
+            setShowTimeClockTab(true);
+            setActiveTab("timetracking");
+          } else {
+            setShowTimeClockTab(false);
+          }
         } else {
           setShowTimeClockTab(false);
+          setIsAdmin(false);
+          setCurrentUser(null);
         }
       } catch (error) {
         console.error('Error fetching employee by email:', error);
         setShowTimeClockTab(false);
+        setIsAdmin(false);
+        setCurrentUser(null);
       }
     } else {
-      // No email parameter, show time clock tab by default
+      // No email parameter, show time clock tab and assume admin access
       setShowTimeClockTab(true);
+      setIsAdmin(true);
+      setCurrentUser(null);
     }
   };
 
@@ -148,23 +165,25 @@ export function PayrollDashboard() {
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {statsData.map((stat, index) => (
-            <Card key={index} className="shadow-card hover:shadow-hover transition-smooth">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {stat.title}
-                </CardTitle>
-                <stat.icon className={`h-4 w-4 ${stat.color}`} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <p className="text-xs text-muted-foreground">{stat.description}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {/* Stats Cards - Only show for admins */}
+        {isAdmin && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {statsData.map((stat, index) => (
+              <Card key={index} className="shadow-card hover:shadow-hover transition-smooth">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    {stat.title}
+                  </CardTitle>
+                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stat.value}</div>
+                  <p className="text-xs text-muted-foreground">{stat.description}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -196,11 +215,11 @@ export function PayrollDashboard() {
           )}
 
           <TabsContent value="calculator" className="space-y-6">
-            <PayrollCalculator onRecorded={fetchStats} />
+            <PayrollCalculator onRecorded={fetchStats} isAdmin={isAdmin} />
           </TabsContent>
 
           <TabsContent value="reports" className="space-y-6">
-            <PayoutsReport refreshToken={stats.monthlyHourlyPayouts + stats.monthlyProjectPayouts} />
+            <PayoutsReport refreshToken={stats.monthlyHourlyPayouts + stats.monthlyProjectPayouts} isAdmin={isAdmin} />
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">

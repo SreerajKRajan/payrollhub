@@ -58,7 +58,7 @@ interface ReportEntry {
   created_at: string;
 }
 
-export function PayoutsReport({ refreshToken }: { refreshToken?: number | string }) {
+export function PayoutsReport({ refreshToken, isAdmin = true }: { refreshToken?: number | string; isAdmin?: boolean }) {
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [employees, setEmployees] = useState<{id: string, name: string, hourly_rate: number | null}[]>([]);
@@ -233,6 +233,45 @@ export function PayoutsReport({ refreshToken }: { refreshToken?: number | string
     } catch (err) {
       console.error('Failed to delete payout', err);
       toast({ title: 'Error', description: 'Failed to delete payout', variant: 'destructive' });
+    }
+  };
+
+  const convertTimeEntryToPayout = async (entry: ReportEntry) => {
+    if (!entry.employee_id || !entry.amount || !entry.rate) return;
+    
+    try {
+      const payoutData = {
+        employee_id: entry.employee_id,
+        employee_name: entry.employee_name,
+        calculation_type: 'hourly',
+        amount: entry.amount,
+        rate: entry.rate,
+        project_value: null,
+        hours_worked: entry.hours_worked,
+        collaborators_count: 1,
+        project_title: null,
+        assigned_member_id: null,
+        assigned_member_name: null,
+        quoted_by_id: null,
+        quoted_by_name: null,
+        is_first_time: false,
+      };
+
+      const { error } = await supabase.from('payouts').insert([payoutData]);
+      if (error) throw error;
+      
+      toast({ 
+        title: 'Converted', 
+        description: 'Time entry converted to editable payout record' 
+      });
+      fetchPayouts();
+    } catch (err) {
+      console.error('Failed to convert time entry', err);
+      toast({ 
+        title: 'Error', 
+        description: 'Failed to convert time entry', 
+        variant: 'destructive' 
+      });
     }
   };
 
@@ -424,7 +463,7 @@ export function PayoutsReport({ refreshToken }: { refreshToken?: number | string
                     <TableCell className="text-right">{new Date(entry.created_at).toLocaleString()}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center gap-1 justify-end">
-                        {entry.type === 'payout' && (
+                        {entry.type === 'payout' && isAdmin && (
                           <>
                             <Button variant="ghost" size="icon" onClick={() => setEditing(entry as Payout)}>
                               <Pencil className="h-4 w-4" />
@@ -434,7 +473,14 @@ export function PayoutsReport({ refreshToken }: { refreshToken?: number | string
                             </Button>
                           </>
                         )}
-                        {entry.type === 'time_entry' && (
+                        {entry.type === 'time_entry' && isAdmin && (
+                          <>
+                            <Button variant="ghost" size="icon" onClick={() => convertTimeEntryToPayout(entry)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                        {entry.type === 'time_entry' && !isAdmin && (
                           <Badge variant="outline" className="text-xs">
                             Auto-calculated
                           </Badge>

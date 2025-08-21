@@ -41,7 +41,7 @@ interface PayoutResult {
   payType: 'hourly' | 'project';
 }
 
-export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
+export function PayrollCalculator({ onRecorded, isAdmin = true }: { onRecorded?: () => void; isAdmin?: boolean }) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [calculationType, setCalculationType] = useState<'hourly' | 'project'>('project');
@@ -542,16 +542,18 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
           </div>
 
           {/* Calculate Button */}
-          <Button 
-            onClick={calculatePayouts} 
-            variant="gradient" 
-            size="lg" 
-            className="w-full"
-            disabled={selectedEmployees.length === 0 || (calculationType === 'project' ? !projectValue : useTrackedHours ? selectedTimeEntries.length === 0 : (!startTime || !endTime))}
-          >
-            <Calculator className="h-5 w-5 mr-2" />
-            Calculate Payouts
-          </Button>
+          {isAdmin && (
+            <Button 
+              onClick={calculatePayouts} 
+              variant="gradient" 
+              size="lg" 
+              className="w-full"
+              disabled={selectedEmployees.length === 0 || (calculationType === 'project' ? !projectValue : useTrackedHours ? selectedTimeEntries.length === 0 : (!startTime || !endTime))}
+            >
+              <Calculator className="h-5 w-5 mr-2" />
+              Calculate Payouts
+            </Button>
+          )}
         </CardContent>
       </Card>
 
