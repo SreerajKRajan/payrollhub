@@ -35,7 +35,8 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [calculationType, setCalculationType] = useState<'hourly' | 'project'>('project');
   const [projectValue, setProjectValue] = useState('');
-  const [hoursWorked, setHoursWorked] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [projectTitle, setProjectTitle] = useState('');
   const [quotedById, setQuotedById] = useState('');
   const [isFirstTime, setIsFirstTime] = useState(false);
@@ -68,6 +69,24 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
     }
   };
 
+  const calculateHours = () => {
+    if (!startTime || !endTime) return 0;
+    
+    const [startHour, startMin] = startTime.split(':').map(Number);
+    const [endHour, endMin] = endTime.split(':').map(Number);
+    
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+    
+    let totalMinutes = endMinutes - startMinutes;
+    if (totalMinutes < 0) {
+      // Handle overnight work (end time is next day)
+      totalMinutes = (24 * 60) - startMinutes + endMinutes;
+    }
+    
+    return totalMinutes / 60;
+  };
+
   const toggleEmployeeSelection = (employeeId: string) => {
     setSelectedEmployees(prev => 
       prev.includes(employeeId) 
@@ -98,7 +117,7 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
 
       if (calculationType === 'hourly' && employee.pay_scale_type === 'hourly') {
         rate = employee.hourly_rate || 0;
-        amount = rate * (parseFloat(hoursWorked) || 0);
+        amount = rate * calculateHours();
       } else if (calculationType === 'project' && employee.pay_scale_type === 'project') {
         const projectVal = parseFloat(projectValue) || 0;
         
@@ -166,7 +185,7 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
         amount: result.amount,
         rate: result.rate,
         project_value: calculationType === 'project' ? parseFloat(projectValue) || null : null,
-        hours_worked: calculationType === 'hourly' ? parseFloat(hoursWorked) || null : null,
+        hours_worked: calculationType === 'hourly' ? calculateHours() || null : null,
         collaborators_count: collaborationCount,
         project_title: projectTitle || null,
         assigned_member_id: null,
@@ -313,16 +332,32 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
               />
             </div>
           ) : (
-            <div className="space-y-2">
-              <Label htmlFor="hours-worked">Hours Worked</Label>
-              <Input
-                id="hours-worked"
-                type="number"
-                step="0.5"
-                value={hoursWorked}
-                onChange={(e) => setHoursWorked(e.target.value)}
-                placeholder="40"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="start-time">Start Time</Label>
+                <Input
+                  id="start-time"
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="end-time">End Time</Label>
+                <Input
+                  id="end-time"
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                />
+              </div>
+              {startTime && endTime && (
+                <div className="col-span-1 md:col-span-2">
+                  <Badge variant="outline" className="text-sm">
+                    Total Hours: {calculateHours().toFixed(2)} hrs
+                  </Badge>
+                </div>
+              )}
             </div>
           )}
 
@@ -396,7 +431,7 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
             variant="gradient" 
             size="lg" 
             className="w-full"
-            disabled={selectedEmployees.length === 0 || (calculationType === 'project' ? !projectValue : !hoursWorked)}
+            disabled={selectedEmployees.length === 0 || (calculationType === 'project' ? !projectValue : !startTime || !endTime)}
           >
             <Calculator className="h-5 w-5 mr-2" />
             Calculate Payouts
@@ -420,7 +455,7 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
             <CardDescription>
               {calculationType === 'project' 
                 ? `Project value: $${projectValue} • ${selectedEmployees.length} collaborator(s)`
-                : `${hoursWorked} hours worked`
+                : `${calculateHours().toFixed(2)} hours worked (${startTime} - ${endTime})`
               }
             </CardDescription>
           </CardHeader>
@@ -435,7 +470,7 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
                     <h4 className="font-medium">{result.employeeName}</h4>
                     <p className="text-sm text-muted-foreground">
                       {result.payType === 'hourly' 
-                        ? `$${result.rate}/hr × ${hoursWorked} hours`
+                        ? `$${result.rate}/hr × ${calculateHours().toFixed(2)} hours`
                         : `${result.rate}% of $${projectValue}`
                       }
                     </p>
