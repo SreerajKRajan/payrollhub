@@ -176,6 +176,40 @@ serve(async (req) => {
         source: 'auto',
       });
     }
+    
+    // Regular quoted-by bonus for non-first-time projects
+    if (!payload.first_time && quotedByEmployee) {
+      // Fetch configurable quoted-by bonus percentage
+      const { data: quotedByBonusData, error: quotedByBonusError } = await supabase
+        .from('app_settings')
+        .select('setting_value')
+        .eq('setting_key', 'quoted_by_bonus_percentage')
+        .maybeSingle();
+
+      let quotedByBonusRate = 2; // default fallback
+      if (quotedByBonusError) {
+        console.warn('Error fetching quoted by bonus percentage, using default 2%:', quotedByBonusError);
+      } else if (quotedByBonusData) {
+        quotedByBonusRate = parseFloat(quotedByBonusData.setting_value) || 2;
+      }
+
+      const quotedByBonusAmount = (payload.project_value * quotedByBonusRate) / 100;
+
+      payouts.push({
+        employee_id: quotedByEmployee.id,
+        employee_name: `${quotedByEmployee.name} (Quoted By Bonus)`,
+        calculation_type: 'project',
+        amount: quotedByBonusAmount,
+        rate: quotedByBonusRate,
+        project_value: payload.project_value,
+        collaborators_count: collaboratorsCount,
+        project_title: payload.project_title,
+        quoted_by_id: quotedByEmployee.id,
+        quoted_by_name: quotedByEmployee.name,
+        is_first_time: false,
+        source: 'auto',
+      });
+    }
 
     if (payouts.length === 0) {
       return new Response(JSON.stringify({ error: 'No payouts could be calculated' }), {
