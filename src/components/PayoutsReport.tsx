@@ -159,116 +159,121 @@ export function PayoutsReport({ refreshToken }: { refreshToken?: number | string
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Filter Controls */}
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-4">
-            <Filter className="h-4 w-4" />
-            <Label className="font-semibold">Filters</Label>
-            <Button variant="ghost" size="sm" onClick={clearFilters}>
-              <X className="h-4 w-4 mr-1" />
-              Clear
-            </Button>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-            {/* Employee Filter */}
-            <div className="space-y-2">
-              <Label>Employee</Label>
-              <Select value={filterEmployee} onValueChange={setFilterEmployee}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All employees" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All employees</SelectItem>
-                  {employees.map((emp) => (
-                    <SelectItem key={emp.id} value={emp.id}>
-                      {emp.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <Card className="border-muted/40 bg-muted/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <Filter className="h-5 w-5 text-primary" />
+                <Label className="text-base font-semibold">Filter Reports</Label>
+              </div>
+              <Button variant="outline" size="sm" onClick={clearFilters} className="gap-2">
+                <X className="h-4 w-4" />
+                Clear All
+              </Button>
             </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+              {/* Employee Filter */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Employee</Label>
+                <Select value={filterEmployee} onValueChange={setFilterEmployee}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="All employees" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All employees</SelectItem>
+                    {employees.map((emp) => (
+                      <SelectItem key={emp.id} value={emp.id}>
+                        {emp.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Type Filter */}
-            <div className="space-y-2">
-              <Label>Type</Label>
-              <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All types</SelectItem>
-                  <SelectItem value="project">Project</SelectItem>
-                  <SelectItem value="hourly">Hourly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              {/* Type Filter */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Type</Label>
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="All types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All types</SelectItem>
+                    <SelectItem value="project">Project</SelectItem>
+                    <SelectItem value="hourly">Hourly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Project Title Filter */}
-            <div className="space-y-2">
-              <Label>Project Title</Label>
-              <Input
-                placeholder="Search project..."
-                value={filterProjectTitle}
-                onChange={(e) => setFilterProjectTitle(e.target.value)}
-              />
-            </div>
+              {/* Project Title Filter */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Project Title</Label>
+                <Input
+                  placeholder="Search project..."
+                  value={filterProjectTitle}
+                  onChange={(e) => setFilterProjectTitle(e.target.value)}
+                  className="h-10"
+                />
+              </div>
 
-            {/* Date From Filter */}
-            <div className="space-y-2">
-              <Label>From Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "justify-start text-left font-normal",
-                      !filterDateFrom && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {filterDateFrom ? format(filterDateFrom, "PPP") : <span>Pick date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={filterDateFrom}
-                    onSelect={setFilterDateFrom}
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+              {/* Date From Filter */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">From Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full h-10 justify-start text-left font-normal",
+                        !filterDateFrom && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {filterDateFrom ? format(filterDateFrom, "MMM dd, yyyy") : <span>Pick date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={filterDateFrom}
+                      onSelect={setFilterDateFrom}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
 
-            {/* Date To Filter */}
-            <div className="space-y-2">
-              <Label>To Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "justify-start text-left font-normal",
-                      !filterDateTo && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {filterDateTo ? format(filterDateTo, "PPP") : <span>Pick date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={filterDateTo}
-                    onSelect={setFilterDateTo}
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
-                  />
-                </PopoverContent>
-              </Popover>
+              {/* Date To Filter */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">To Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full h-10 justify-start text-left font-normal",
+                        !filterDateTo && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {filterDateTo ? format(filterDateTo, "MMM dd, yyyy") : <span>Pick date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={filterDateTo}
+                      onSelect={setFilterDateTo}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
-          </div>
+          </CardContent>
         </Card>
 
         {/* Table */}
