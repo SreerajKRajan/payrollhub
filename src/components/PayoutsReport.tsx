@@ -246,6 +246,21 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
     }
   };
 
+  const deleteTimeEntry = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this time entry?')) return;
+    
+    try {
+      const { error } = await supabase.from('time_entries').delete().eq('id', id);
+      if (error) throw error;
+      
+      toast({ title: 'Deleted', description: 'Time entry deleted successfully' });
+      fetchTimeEntries();
+    } catch (err) {
+      console.error('Failed to delete time entry', err);
+      toast({ title: 'Error', description: 'Failed to delete time entry', variant: 'destructive' });
+    }
+  };
+
   const convertTimeEntryToPayout = async (entry: ReportEntry) => {
     if (!entry.employee_id || !entry.amount || !entry.rate) return;
     
@@ -487,6 +502,9 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
                           <>
                             <Button variant="ghost" size="icon" onClick={() => convertTimeEntryToPayout(entry)}>
                               <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => deleteTimeEntry(entry.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </>
                         )}
