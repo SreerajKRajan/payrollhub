@@ -266,34 +266,38 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
               />
             </div>
             
-            <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="first-time"
-                checked={isFirstTime}
-                onCheckedChange={(checked) => setIsFirstTime(checked === true)}
-              />
-              <Label htmlFor="first-time" className="text-sm font-medium">
-                First time project
-              </Label>
-            </div>
+            {calculationType === 'project' && (
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="first-time"
+                  checked={isFirstTime}
+                  onCheckedChange={(checked) => setIsFirstTime(checked === true)}
+                />
+                <Label htmlFor="first-time" className="text-sm font-medium">
+                  First time project
+                </Label>
+              </div>
+            )}
           </div>
 
-          {/* Team Assignment */}
-          <div className="space-y-2">
-            <Label>Quoted By</Label>
-            <Select value={quotedById} onValueChange={setQuotedById}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select who quoted" />
-              </SelectTrigger>
-              <SelectContent>
-                {employees.map((employee) => (
-                  <SelectItem key={employee.id} value={employee.id}>
-                    {employee.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Team Assignment - Only for project-based */}
+          {calculationType === 'project' && (
+            <div className="space-y-2">
+              <Label>Quoted By</Label>
+              <Select value={quotedById} onValueChange={setQuotedById}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select who quoted" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees.map((employee) => (
+                    <SelectItem key={employee.id} value={employee.id}>
+                      {employee.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Input Fields */}
           {calculationType === 'project' ? (
