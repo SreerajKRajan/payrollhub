@@ -28,7 +28,11 @@ interface TimeEntry {
   created_at: string;
 }
 
-export function TimeTracking() {
+interface TimeTrackingProps {
+  preSelectedEmployee?: { id: string; name: string } | null;
+}
+
+export function TimeTracking({ preSelectedEmployee }: TimeTrackingProps) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
@@ -40,6 +44,12 @@ export function TimeTracking() {
     fetchEmployees();
     fetchTimeEntries();
   }, []);
+
+  useEffect(() => {
+    if (preSelectedEmployee) {
+      setSelectedEmployee(preSelectedEmployee.id);
+    }
+  }, [preSelectedEmployee]);
 
   const fetchEmployees = async () => {
     try {

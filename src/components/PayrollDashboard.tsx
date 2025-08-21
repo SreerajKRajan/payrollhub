@@ -7,17 +7,57 @@ import { TimeTracking } from "./TimeTracking";
 import { Settings } from "./Settings";
 import { supabase } from "@/integrations/supabase/client";
 import { PayoutsReport } from "./PayoutsReport";
+
 export function PayrollDashboard() {
-  const [activeTab, setActiveTab] = useState("timetracking");
+  const [activeTab, setActiveTab] = useState("calculator");
   const [stats, setStats] = useState({
     totalEmployees: 0,
     avgHourlyRate: 0,
     monthlyPayouts: 0,
   });
+  const [selectedEmployee, setSelectedEmployee] = useState<{id: string; name: string} | null>(null);
+  const [showTimeClockTab, setShowTimeClockTab] = useState(false);
 
   useEffect(() => {
     fetchStats();
+    checkEmailParameter();
   }, []);
+
+  const checkEmailParameter = async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const email = urlParams.get('email');
+    
+    if (email) {
+      try {
+        const { data: employee, error } = await supabase
+          .from('employees')
+          .select('id, name, email, pay_scale_type, status')
+          .eq('email', email)
+          .eq('status', 'active')
+          .single();
+
+        if (error) {
+          console.log('Employee not found or error:', error);
+          setShowTimeClockTab(false);
+          return;
+        }
+
+        if (employee && employee.pay_scale_type === 'hourly') {
+          setSelectedEmployee({ id: employee.id, name: employee.name });
+          setShowTimeClockTab(true);
+          setActiveTab("timetracking");
+        } else {
+          setShowTimeClockTab(false);
+        }
+      } catch (error) {
+        console.error('Error fetching employee by email:', error);
+        setShowTimeClockTab(false);
+      }
+    } else {
+      // No email parameter, show time clock tab by default
+      setShowTimeClockTab(true);
+    }
+  };
 
   const fetchStats = async () => {
     try {
@@ -122,11 +162,13 @@ export function PayrollDashboard() {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
-            <TabsTrigger value="timetracking" className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              Time Clock
-            </TabsTrigger>
+          <TabsList className={`grid w-full ${showTimeClockTab ? 'grid-cols-4 lg:w-[500px]' : 'grid-cols-3 lg:w-[400px]'}`}>
+            {showTimeClockTab && (
+              <TabsTrigger value="timetracking" className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Time Clock
+              </TabsTrigger>
+            )}
             <TabsTrigger value="calculator" className="flex items-center gap-2">
               <Calculator className="h-4 w-4" />
               Calculator
@@ -141,9 +183,11 @@ export function PayrollDashboard() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="timetracking" className="space-y-6">
-            <TimeTracking />
-          </TabsContent>
+          {showTimeClockTab && (
+            <TabsContent value="timetracking" className="space-y-6">
+              <TimeTracking preSelectedEmployee={selectedEmployee} />
+            </TabsContent>
+          )}
 
           <TabsContent value="calculator" className="space-y-6">
             <PayrollCalculator onRecorded={fetchStats} />
