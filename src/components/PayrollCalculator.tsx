@@ -1,0 +1,348 @@
+import { useState, useEffect } from "react";
+import { Calculator, DollarSign, Users, Clock, Percent } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+interface Employee {
+  id: string;
+  name: string;
+  pay_scale_type: 'hourly' | 'project';
+  hourly_rate?: number;
+  project_rate_1_member?: number;
+  project_rate_2_members?: number;
+  project_rate_3_members?: number;
+  project_rate_4_members?: number;
+  project_rate_5_members?: number;
+}
+
+interface PayoutResult {
+  employeeId: string;
+  employeeName: string;
+  amount: number;
+  rate: number;
+  payType: 'hourly' | 'project';
+}
+
+export function PayrollCalculator() {
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
+  const [calculationType, setCalculationType] = useState<'hourly' | 'project'>('project');
+  const [projectValue, setProjectValue] = useState('');
+  const [hoursWorked, setHoursWorked] = useState('');
+  const [payoutResults, setPayoutResults] = useState<PayoutResult[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  const fetchEmployees = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('id, name, pay_scale_type, hourly_rate, project_rate_1_member, project_rate_2_members, project_rate_3_members, project_rate_4_members, project_rate_5_members')
+        .eq('status', 'active');
+
+      if (error) throw error;
+      setEmployees(data || []);
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load employees",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleEmployeeSelection = (employeeId: string) => {
+    setSelectedEmployees(prev => 
+      prev.includes(employeeId) 
+        ? prev.filter(id => id !== employeeId)
+        : [...prev, employeeId]
+    );
+  };
+
+  const calculatePayouts = () => {
+    if (selectedEmployees.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one employee",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const results: PayoutResult[] = [];
+    const collaborationCount = selectedEmployees.length;
+
+    selectedEmployees.forEach(employeeId => {
+      const employee = employees.find(emp => emp.id === employeeId);
+      if (!employee) return;
+
+      let amount = 0;
+      let rate = 0;
+
+      if (calculationType === 'hourly' && employee.pay_scale_type === 'hourly') {
+        rate = employee.hourly_rate || 0;
+        amount = rate * (parseFloat(hoursWorked) || 0);
+      } else if (calculationType === 'project' && employee.pay_scale_type === 'project') {
+        const projectVal = parseFloat(projectValue) || 0;
+        
+        // Get the appropriate rate based on collaboration count
+        switch (collaborationCount) {
+          case 1:
+            rate = employee.project_rate_1_member || 0;
+            break;
+          case 2:
+            rate = employee.project_rate_2_members || 0;
+            break;
+          case 3:
+            rate = employee.project_rate_3_members || 0;
+            break;
+          case 4:
+            rate = employee.project_rate_4_members || 0;
+            break;
+          case 5:
+            rate = employee.project_rate_5_members || 0;
+            break;
+          default:
+            // For more than 5 members, use the 5-member rate
+            rate = employee.project_rate_5_members || 0;
+        }
+        
+        amount = (projectVal * rate) / 100;
+      }
+
+      results.push({
+        employeeId: employee.id,
+        employeeName: employee.name,
+        amount,
+        rate,
+        payType: employee.pay_scale_type,
+      });
+    });
+
+    setPayoutResults(results);
+  };
+
+  const getTotalPayout = () => {
+    return payoutResults.reduce((total, result) => total + result.amount, 0);
+  };
+
+  const getEligibleEmployees = () => {
+    return employees.filter(emp => emp.pay_scale_type === calculationType);
+  };
+
+  if (loading) {
+    return (
+      <Card className="animate-pulse">
+        <CardHeader>
+          <div className="h-6 bg-muted rounded w-1/3"></div>
+          <div className="h-4 bg-muted rounded w-1/2"></div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="h-10 bg-muted rounded"></div>
+            <div className="h-32 bg-muted rounded"></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calculator className="h-5 w-5 text-primary" />
+            Payroll Calculator
+          </CardTitle>
+          <CardDescription>
+            Calculate payouts for projects or hourly work
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Calculation Type */}
+          <div className="space-y-2">
+            <Label>Calculation Type</Label>
+            <Select value={calculationType} onValueChange={(value: any) => {
+              setCalculationType(value);
+              setSelectedEmployees([]);
+              setPayoutResults([]);
+            }}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="project">Project-based</SelectItem>
+                <SelectItem value="hourly">Hourly-based</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Input Fields */}
+          {calculationType === 'project' ? (
+            <div className="space-y-2">
+              <Label htmlFor="project-value">Project Value ($)</Label>
+              <Input
+                id="project-value"
+                type="number"
+                step="0.01"
+                value={projectValue}
+                onChange={(e) => setProjectValue(e.target.value)}
+                placeholder="1000.00"
+              />
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="hours-worked">Hours Worked</Label>
+              <Input
+                id="hours-worked"
+                type="number"
+                step="0.5"
+                value={hoursWorked}
+                onChange={(e) => setHoursWorked(e.target.value)}
+                placeholder="40"
+              />
+            </div>
+          )}
+
+          {/* Employee Selection */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label>Select Employees</Label>
+              <Badge variant="secondary">
+                {selectedEmployees.length} selected
+              </Badge>
+            </div>
+            
+            {getEligibleEmployees().length === 0 ? (
+              <div className="text-center py-8">
+                <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">
+                  No employees available for {calculationType} calculations
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Add employees with {calculationType} pay scale to use this calculator
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {getEligibleEmployees().map((employee) => (
+                  <div
+                    key={employee.id}
+                    className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                      selectedEmployees.includes(employee.id)
+                        ? 'border-primary bg-primary/5 shadow-sm'
+                        : 'border-border hover:border-accent'
+                    }`}
+                    onClick={() => toggleEmployeeSelection(employee.id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">{employee.name}</h4>
+                        <div className="flex items-center gap-2 mt-1">
+                          {employee.pay_scale_type === 'hourly' ? (
+                            <>
+                              <Clock className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm text-muted-foreground">
+                                ${employee.hourly_rate || 0}/hr
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Percent className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm text-muted-foreground">
+                                {employee.project_rate_1_member || 0}% (solo)
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className={`w-4 h-4 rounded-full border-2 ${
+                        selectedEmployees.includes(employee.id)
+                          ? 'bg-primary border-primary'
+                          : 'border-muted-foreground'
+                      }`} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Calculate Button */}
+          <Button 
+            onClick={calculatePayouts} 
+            variant="gradient" 
+            size="lg" 
+            className="w-full"
+            disabled={selectedEmployees.length === 0 || (calculationType === 'project' ? !projectValue : !hoursWorked)}
+          >
+            <Calculator className="h-5 w-5 mr-2" />
+            Calculate Payouts
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Results */}
+      {payoutResults.length > 0 && (
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-success" />
+                Payout Results
+              </span>
+              <Badge variant="default" className="text-lg px-3 py-1">
+                Total: ${getTotalPayout().toFixed(2)}
+              </Badge>
+            </CardTitle>
+            <CardDescription>
+              {calculationType === 'project' 
+                ? `Project value: $${projectValue} • ${selectedEmployees.length} collaborator(s)`
+                : `${hoursWorked} hours worked`
+              }
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {payoutResults.map((result) => (
+                <div
+                  key={result.employeeId}
+                  className="flex items-center justify-between p-4 bg-gradient-card rounded-lg border"
+                >
+                  <div>
+                    <h4 className="font-medium">{result.employeeName}</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {result.payType === 'hourly' 
+                        ? `$${result.rate}/hr × ${hoursWorked} hours`
+                        : `${result.rate}% of $${projectValue}`
+                      }
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xl font-bold text-success">
+                      ${result.amount.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
