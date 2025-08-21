@@ -131,6 +131,45 @@ export type Database = {
         }
         Relationships: []
       }
+      time_entries: {
+        Row: {
+          check_in_time: string
+          check_out_time: string | null
+          created_at: string
+          employee_id: string
+          employee_name: string
+          id: string
+          notes: string | null
+          status: string
+          total_hours: number | null
+          updated_at: string
+        }
+        Insert: {
+          check_in_time: string
+          check_out_time?: string | null
+          created_at?: string
+          employee_id: string
+          employee_name: string
+          id?: string
+          notes?: string | null
+          status?: string
+          total_hours?: number | null
+          updated_at?: string
+        }
+        Update: {
+          check_in_time?: string
+          check_out_time?: string | null
+          created_at?: string
+          employee_id?: string
+          employee_name?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          total_hours?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
