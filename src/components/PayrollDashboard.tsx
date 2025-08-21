@@ -1,18 +1,14 @@
 import { useState, useEffect } from "react";
-import { Users, Calculator, DollarSign, TrendingUp, Clock } from "lucide-react";
+import { Calculator, DollarSign, TrendingUp, Clock, Settings as SettingsIcon, Users } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { EmployeeList } from "./EmployeeList";
-import { EmployeeForm } from "./EmployeeForm";
 import { PayrollCalculator } from "./PayrollCalculator";
 import { TimeTracking } from "./TimeTracking";
+import { Settings } from "./Settings";
 import { supabase } from "@/integrations/supabase/client";
 import { PayoutsReport } from "./PayoutsReport";
 export function PayrollDashboard() {
-  const [activeTab, setActiveTab] = useState("employees");
-  const [showEmployeeForm, setShowEmployeeForm] = useState(false);
-  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [activeTab, setActiveTab] = useState("timetracking");
   const [stats, setStats] = useState({
     totalEmployees: 0,
     avgHourlyRate: 0,
@@ -104,15 +100,6 @@ export function PayrollDashboard() {
               Manage your team's payroll with precision and style
             </p>
           </div>
-          <Button 
-            variant="gradient" 
-            size="lg"
-            onClick={() => setShowEmployeeForm(true)}
-            className="shadow-elegant"
-          >
-            <Users className="h-5 w-5" />
-            Add Team Member
-          </Button>
         </div>
 
         {/* Stats Cards */}
@@ -136,10 +123,6 @@ export function PayrollDashboard() {
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
-            <TabsTrigger value="employees" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Employees
-            </TabsTrigger>
             <TabsTrigger value="timetracking" className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
               Time Clock
@@ -152,17 +135,11 @@ export function PayrollDashboard() {
               <TrendingUp className="h-4 w-4" />
               Reports
             </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <SettingsIcon className="h-4 w-4" />
+              Settings
+            </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="employees" className="space-y-6">
-            <EmployeeList 
-              onAddEmployee={() => setShowEmployeeForm(true)}
-              onEditEmployee={(employee) => {
-                setEditingEmployee(employee);
-                setShowEmployeeForm(true);
-              }}
-            />
-          </TabsContent>
 
           <TabsContent value="timetracking" className="space-y-6">
             <TimeTracking />
@@ -175,23 +152,11 @@ export function PayrollDashboard() {
           <TabsContent value="reports" className="space-y-6">
             <PayoutsReport refreshToken={stats.monthlyPayouts} />
           </TabsContent>
-        </Tabs>
 
-        {/* Employee Form Modal */}
-        {showEmployeeForm && (
-          <EmployeeForm 
-            employee={editingEmployee}
-            onClose={() => {
-              setShowEmployeeForm(false);
-              setEditingEmployee(null);
-            }} 
-            onSuccess={() => {
-              setShowEmployeeForm(false);
-              setEditingEmployee(null);
-              fetchStats(); // Refresh stats after employee changes
-            }}
-          />
-        )}
+          <TabsContent value="settings" className="space-y-6">
+            <Settings onStatsUpdate={fetchStats} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
