@@ -160,7 +160,7 @@ export function PayrollDashboard() {
           </TabsContent>
 
           <TabsContent value="calculator" className="space-y-6">
-            <PayrollCalculator />
+            <PayrollCalculator onRecorded={fetchStats} />
           </TabsContent>
 
           <TabsContent value="reports" className="space-y-6">

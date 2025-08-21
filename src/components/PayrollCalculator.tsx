@@ -29,7 +29,7 @@ interface PayoutResult {
   payType: 'hourly' | 'project';
 }
 
-export function PayrollCalculator() {
+export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [calculationType, setCalculationType] = useState<'hourly' | 'project'>('project');
@@ -158,6 +158,7 @@ export function PayrollCalculator() {
         description: "Payouts calculated and recorded successfully",
         variant: "default",
       });
+      onRecorded?.();
     } catch (error) {
       console.error('Error saving payouts:', error);
       toast({
