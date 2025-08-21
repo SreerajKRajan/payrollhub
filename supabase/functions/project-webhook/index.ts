@@ -70,12 +70,22 @@ serve(async (req) => {
     // Find quoted by employee
     let quotedByEmployee = null;
     if (payload.quoted_by_name) {
-      const { data: quotedBy } = await supabase
+      const { data: quotedBy, error: quotedByError } = await supabase
         .from('employees')
         .select('id, name')
         .eq('name', payload.quoted_by_name)
-        .single();
-      quotedByEmployee = quotedBy;
+        .maybeSingle();
+      
+      if (quotedByError) {
+        console.warn('Error finding quoted by employee:', quotedByError);
+      } else {
+        quotedByEmployee = quotedBy;
+      }
+      
+      console.log('Quoted by lookup result:', { 
+        searched_name: payload.quoted_by_name, 
+        found_employee: quotedByEmployee 
+      });
     }
 
     const collaboratorsCount = employees.length;
