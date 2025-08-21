@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -35,6 +36,10 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
   const [calculationType, setCalculationType] = useState<'hourly' | 'project'>('project');
   const [projectValue, setProjectValue] = useState('');
   const [hoursWorked, setHoursWorked] = useState('');
+  const [projectTitle, setProjectTitle] = useState('');
+  const [assignedMemberId, setAssignedMemberId] = useState('');
+  const [quotedById, setQuotedById] = useState('');
+  const [isFirstTime, setIsFirstTime] = useState(false);
   const [payoutResults, setPayoutResults] = useState<PayoutResult[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -136,6 +141,9 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
     
     // Save payouts to database
     try {
+      const assignedMember = employees.find(emp => emp.id === assignedMemberId);
+      const quotedBy = employees.find(emp => emp.id === quotedById);
+      
       const payoutRecords = results.map(result => ({
         employee_id: result.employeeId,
         employee_name: result.employeeName,
@@ -145,6 +153,12 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
         project_value: calculationType === 'project' ? parseFloat(projectValue) || null : null,
         hours_worked: calculationType === 'hourly' ? parseFloat(hoursWorked) || null : null,
         collaborators_count: collaborationCount,
+        project_title: projectTitle || null,
+        assigned_member_id: assignedMemberId || null,
+        assigned_member_name: assignedMember?.name || null,
+        quoted_by_id: quotedById || null,
+        quoted_by_name: quotedBy?.name || null,
+        is_first_time: isFirstTime,
       }));
 
       const { error } = await supabase
@@ -223,6 +237,65 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
                 <SelectItem value="hourly">Hourly-based</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Project Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="project-title">Project Title</Label>
+              <Input
+                id="project-title"
+                value={projectTitle}
+                onChange={(e) => setProjectTitle(e.target.value)}
+                placeholder="Enter project title"
+              />
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="first-time"
+                checked={isFirstTime}
+                onCheckedChange={(checked) => setIsFirstTime(checked === true)}
+              />
+              <Label htmlFor="first-time" className="text-sm font-medium">
+                First time project
+              </Label>
+            </div>
+          </div>
+
+          {/* Team Assignment */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Assigned Member</Label>
+              <Select value={assignedMemberId} onValueChange={setAssignedMemberId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select assigned member" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees.map((employee) => (
+                    <SelectItem key={employee.id} value={employee.id}>
+                      {employee.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Quoted By</Label>
+              <Select value={quotedById} onValueChange={setQuotedById}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select who quoted" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees.map((employee) => (
+                    <SelectItem key={employee.id} value={employee.id}>
+                      {employee.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Input Fields */}

@@ -74,6 +74,8 @@ export type Database = {
       payouts: {
         Row: {
           amount: number
+          assigned_member_id: string | null
+          assigned_member_name: string | null
           calculation_type: string
           collaborators_count: number | null
           created_at: string
@@ -81,12 +83,18 @@ export type Database = {
           employee_name: string
           hours_worked: number | null
           id: string
+          is_first_time: boolean | null
+          project_title: string | null
           project_value: number | null
+          quoted_by_id: string | null
+          quoted_by_name: string | null
           rate: number
           updated_at: string
         }
         Insert: {
           amount: number
+          assigned_member_id?: string | null
+          assigned_member_name?: string | null
           calculation_type: string
           collaborators_count?: number | null
           created_at?: string
@@ -94,12 +102,18 @@ export type Database = {
           employee_name: string
           hours_worked?: number | null
           id?: string
+          is_first_time?: boolean | null
+          project_title?: string | null
           project_value?: number | null
+          quoted_by_id?: string | null
+          quoted_by_name?: string | null
           rate: number
           updated_at?: string
         }
         Update: {
           amount?: number
+          assigned_member_id?: string | null
+          assigned_member_name?: string | null
           calculation_type?: string
           collaborators_count?: number | null
           created_at?: string
@@ -107,7 +121,11 @@ export type Database = {
           employee_name?: string
           hours_worked?: number | null
           id?: string
+          is_first_time?: boolean | null
+          project_title?: string | null
           project_value?: number | null
+          quoted_by_id?: string | null
+          quoted_by_name?: string | null
           rate?: number
           updated_at?: string
         }
