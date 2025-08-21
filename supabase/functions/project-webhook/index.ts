@@ -145,7 +145,20 @@ serve(async (req) => {
 
     // First-time bonus payout assigned ONLY to the quoted-by employee
     if (payload.first_time && quotedByEmployee) {
-      const bonusRate = 30; // fixed 30% first-time bonus
+      // Fetch configurable first time bonus percentage
+      const { data: bonusSettingData, error: bonusSettingError } = await supabase
+        .from('app_settings')
+        .select('setting_value')
+        .eq('setting_key', 'first_time_bonus_percentage')
+        .maybeSingle();
+
+      let bonusRate = 30; // default fallback
+      if (bonusSettingError) {
+        console.warn('Error fetching first time bonus percentage, using default 30%:', bonusSettingError);
+      } else if (bonusSettingData) {
+        bonusRate = parseFloat(bonusSettingData.setting_value) || 30;
+      }
+
       const bonusAmount = (payload.project_value * bonusRate) / 100;
 
       payouts.push({
