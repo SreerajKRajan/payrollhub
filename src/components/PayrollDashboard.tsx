@@ -13,7 +13,8 @@ export function PayrollDashboard() {
   const [stats, setStats] = useState({
     totalEmployees: 0,
     avgHourlyRate: 0,
-    monthlyPayouts: 0,
+    monthlyHourlyPayouts: 0,
+    monthlyProjectPayouts: 0,
   });
   const [selectedEmployee, setSelectedEmployee] = useState<{id: string; name: string} | null>(null);
   const [showTimeClockTab, setShowTimeClockTab] = useState(false);
@@ -79,24 +80,29 @@ export function PayrollDashboard() {
         ? hourlyEmployees.reduce((sum, emp) => sum + (emp.hourly_rate || 0), 0) / hourlyEmployees.length
         : 0;
 
-      // Fetch this month's payouts
+      // Fetch this month's payouts separated by type
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
 
       const { data: monthlyPayouts } = await supabase
         .from('payouts')
-        .select('amount')
+        .select('amount, calculation_type')
         .gte('created_at', startOfMonth.toISOString());
 
-      const totalMonthlyPayouts = monthlyPayouts
-        ? monthlyPayouts.reduce((sum, payout) => sum + (payout.amount || 0), 0)
+      const monthlyHourlyPayouts = monthlyPayouts
+        ? monthlyPayouts.filter(p => p.calculation_type === 'hourly').reduce((sum, payout) => sum + (payout.amount || 0), 0)
+        : 0;
+
+      const monthlyProjectPayouts = monthlyPayouts
+        ? monthlyPayouts.filter(p => p.calculation_type === 'project').reduce((sum, payout) => sum + (payout.amount || 0), 0)
         : 0;
 
       setStats({
         totalEmployees: employeeCount || 0,
         avgHourlyRate,
-        monthlyPayouts: totalMonthlyPayouts,
+        monthlyHourlyPayouts,
+        monthlyProjectPayouts,
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -112,18 +118,25 @@ export function PayrollDashboard() {
       color: "text-primary",
     },
     {
-      title: "Avg. Hourly Rate",
-      value: `$${stats.avgHourlyRate.toFixed(0)}`,
-      description: "Across all employees",
-      icon: DollarSign,
+      title: "Hourly Payouts",
+      value: `$${stats.monthlyHourlyPayouts.toFixed(0)}`,
+      description: "This month",
+      icon: Clock,
       color: "text-success",
     },
     {
       title: "Project Payouts",
-      value: `$${stats.monthlyPayouts.toFixed(0)}`,
+      value: `$${stats.monthlyProjectPayouts.toFixed(0)}`,
       description: "This month",
       icon: TrendingUp,
       color: "text-accent",
+    },
+    {
+      title: "Avg. Hourly Rate",
+      value: `$${stats.avgHourlyRate.toFixed(0)}`,
+      description: "Across all employees",
+      icon: DollarSign,
+      color: "text-muted-foreground",
     },
   ];
 
@@ -194,7 +207,7 @@ export function PayrollDashboard() {
           </TabsContent>
 
           <TabsContent value="reports" className="space-y-6">
-            <PayoutsReport refreshToken={stats.monthlyPayouts} />
+            <PayoutsReport refreshToken={stats.monthlyHourlyPayouts + stats.monthlyProjectPayouts} />
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">
