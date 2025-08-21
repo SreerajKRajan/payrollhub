@@ -21,6 +21,7 @@ export type Database = {
           email: string
           hourly_rate: number | null
           id: string
+          is_admin: boolean
           name: string
           pay_scale_type: Database["public"]["Enums"]["pay_scale_type"]
           phone: string | null
@@ -39,6 +40,7 @@ export type Database = {
           email: string
           hourly_rate?: number | null
           id?: string
+          is_admin?: boolean
           name: string
           pay_scale_type: Database["public"]["Enums"]["pay_scale_type"]
           phone?: string | null
@@ -57,6 +59,7 @@ export type Database = {
           email?: string
           hourly_rate?: number | null
           id?: string
+          is_admin?: boolean
           name?: string
           pay_scale_type?: Database["public"]["Enums"]["pay_scale_type"]
           phone?: string | null

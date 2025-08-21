@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Clock, CheckCircle, XCircle, Calendar } from "lucide-react";
+import { Clock, CheckCircle, XCircle, Calendar, Edit3, Trash2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { format, differenceInHours, differenceInMinutes } from "date-fns";
+import { EditTimeEntryDialog } from "./EditTimeEntryDialog";
 
 interface Employee {
   id: string;
@@ -38,11 +39,14 @@ export function TimeTracking({ preSelectedEmployee }: TimeTrackingProps) {
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ id: string; is_admin: boolean } | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchEmployees();
     fetchTimeEntries();
+    fetchCurrentUser();
   }, []);
 
   useEffect(() => {
@@ -50,6 +54,29 @@ export function TimeTracking({ preSelectedEmployee }: TimeTrackingProps) {
       setSelectedEmployee(preSelectedEmployee.id);
     }
   }, [preSelectedEmployee]);
+
+  const fetchCurrentUser = async () => {
+    // In a real app, this would come from authentication
+    // For now, we'll assume the first admin user or create a demo check
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('id, is_admin')
+        .eq('is_admin', true)
+        .limit(1);
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        setCurrentUser({ id: data[0].id, is_admin: true });
+      } else {
+        setCurrentUser({ id: 'demo-user', is_admin: false });
+      }
+    } catch (error) {
+      console.error('Error fetching current user:', error);
+      setCurrentUser({ id: 'demo-user', is_admin: false });
+    }
+  };
 
   const fetchEmployees = async () => {
     try {
@@ -398,6 +425,16 @@ export function TimeTracking({ preSelectedEmployee }: TimeTrackingProps) {
                         {entry.total_hours.toFixed(2)}h
                       </Badge>
                     )}
+                    {currentUser?.is_admin && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditingEntry(entry)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -405,6 +442,19 @@ export function TimeTracking({ preSelectedEmployee }: TimeTrackingProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Time Entry Dialog */}
+      {editingEntry && (
+        <EditTimeEntryDialog
+          entry={editingEntry}
+          open={!!editingEntry}
+          onOpenChange={(open) => !open && setEditingEntry(null)}
+          onSaved={() => {
+            fetchTimeEntries();
+            setEditingEntry(null);
+          }}
+        />
+      )}
     </div>
   );
 }

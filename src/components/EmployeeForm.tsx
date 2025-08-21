@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -23,6 +24,7 @@ interface Employee {
   position: string;
   status: 'active' | 'inactive' | 'on_leave';
   pay_scale_type: 'hourly' | 'project';
+  is_admin: boolean;
   hourly_rate?: number;
   project_rate_1_member?: number;
   project_rate_2_members?: number;
@@ -39,6 +41,7 @@ interface FormData {
   position: string;
   status: 'active' | 'inactive' | 'on_leave';
   pay_scale_type: 'hourly' | 'project';
+  is_admin: boolean;
   hourly_rate: string;
   project_rate_1_member: string;
   project_rate_2_members: string;
@@ -56,6 +59,7 @@ export function EmployeeForm({ onClose, onSuccess, employee }: EmployeeFormProps
     position: employee?.position || '',
     status: employee?.status || 'active',
     pay_scale_type: employee?.pay_scale_type || 'hourly',
+    is_admin: employee?.is_admin || false,
     hourly_rate: employee?.hourly_rate?.toString() || '',
     project_rate_1_member: employee?.project_rate_1_member?.toString() || '',
     project_rate_2_members: employee?.project_rate_2_members?.toString() || '',
@@ -66,7 +70,7 @@ export function EmployeeForm({ onClose, onSuccess, employee }: EmployeeFormProps
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleInputChange = (field: keyof FormData, value: string) => {
+  const handleInputChange = (field: keyof FormData, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -83,6 +87,7 @@ export function EmployeeForm({ onClose, onSuccess, employee }: EmployeeFormProps
         position: formData.position,
         status: formData.status,
         pay_scale_type: formData.pay_scale_type,
+        is_admin: formData.is_admin,
       };
 
       if (formData.pay_scale_type === 'hourly') {
@@ -213,6 +218,21 @@ export function EmployeeForm({ onClose, onSuccess, employee }: EmployeeFormProps
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              
+              {/* Admin Toggle */}
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+                <div className="space-y-1">
+                  <Label htmlFor="admin">Administrator Access</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Grants access to view stats, edit records, and manage time entries
+                  </p>
+                </div>
+                <Switch
+                  id="admin"
+                  checked={formData.is_admin}
+                  onCheckedChange={(checked) => handleInputChange('is_admin', checked)}
+                />
               </div>
             </div>
 
