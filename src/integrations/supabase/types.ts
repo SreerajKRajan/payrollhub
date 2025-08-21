@@ -71,6 +71,48 @@ export type Database = {
         }
         Relationships: []
       }
+      payouts: {
+        Row: {
+          amount: number
+          calculation_type: string
+          collaborators_count: number | null
+          created_at: string
+          employee_id: string
+          employee_name: string
+          hours_worked: number | null
+          id: string
+          project_value: number | null
+          rate: number
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          calculation_type: string
+          collaborators_count?: number | null
+          created_at?: string
+          employee_id: string
+          employee_name: string
+          hours_worked?: number | null
+          id?: string
+          project_value?: number | null
+          rate: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          calculation_type?: string
+          collaborators_count?: number | null
+          created_at?: string
+          employee_id?: string
+          employee_name?: string
+          hours_worked?: number | null
+          id?: string
+          project_value?: number | null
+          rate?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

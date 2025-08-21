@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Users, Calculator, DollarSign, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,30 +6,84 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmployeeList } from "./EmployeeList";
 import { EmployeeForm } from "./EmployeeForm";
 import { PayrollCalculator } from "./PayrollCalculator";
+import { supabase } from "@/integrations/supabase/client";
 
 export function PayrollDashboard() {
   const [activeTab, setActiveTab] = useState("employees");
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
+  const [stats, setStats] = useState({
+    totalEmployees: 0,
+    avgHourlyRate: 0,
+    monthlyPayouts: 0,
+  });
 
-  const stats = [
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      // Fetch employee count
+      const { count: employeeCount } = await supabase
+        .from('employees')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+
+      // Fetch average hourly rate
+      const { data: hourlyEmployees } = await supabase
+        .from('employees')
+        .select('hourly_rate')
+        .eq('status', 'active')
+        .eq('pay_scale_type', 'hourly')
+        .not('hourly_rate', 'is', null);
+
+      const avgHourlyRate = hourlyEmployees && hourlyEmployees.length > 0
+        ? hourlyEmployees.reduce((sum, emp) => sum + (emp.hourly_rate || 0), 0) / hourlyEmployees.length
+        : 0;
+
+      // Fetch this month's payouts
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      const { data: monthlyPayouts } = await supabase
+        .from('payouts')
+        .select('amount')
+        .gte('created_at', startOfMonth.toISOString());
+
+      const totalMonthlyPayouts = monthlyPayouts
+        ? monthlyPayouts.reduce((sum, payout) => sum + (payout.amount || 0), 0)
+        : 0;
+
+      setStats({
+        totalEmployees: employeeCount || 0,
+        avgHourlyRate,
+        monthlyPayouts: totalMonthlyPayouts,
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  const statsData = [
     {
       title: "Total Employees",
-      value: "0",
+      value: stats.totalEmployees.toString(),
       description: "Active team members",
       icon: Users,
       color: "text-primary",
     },
     {
       title: "Avg. Hourly Rate",
-      value: "$0",
+      value: `$${stats.avgHourlyRate.toFixed(0)}`,
       description: "Across all employees",
       icon: DollarSign,
       color: "text-success",
     },
     {
       title: "Project Payouts",
-      value: "$0",
+      value: `$${stats.monthlyPayouts.toFixed(0)}`,
       description: "This month",
       icon: TrendingUp,
       color: "text-accent",
@@ -62,7 +116,7 @@ export function PayrollDashboard() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {stats.map((stat, index) => (
+          {statsData.map((stat, index) => (
             <Card key={index} className="shadow-card hover:shadow-hover transition-smooth">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -138,6 +192,7 @@ export function PayrollDashboard() {
             onSuccess={() => {
               setShowEmployeeForm(false);
               setEditingEmployee(null);
+              fetchStats(); // Refresh stats after employee changes
             }}
           />
         )}

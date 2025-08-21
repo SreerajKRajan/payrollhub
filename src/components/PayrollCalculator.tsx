@@ -72,7 +72,7 @@ export function PayrollCalculator() {
     );
   };
 
-  const calculatePayouts = () => {
+  const calculatePayouts = async () => {
     if (selectedEmployees.length === 0) {
       toast({
         title: "Error",
@@ -133,6 +133,39 @@ export function PayrollCalculator() {
     });
 
     setPayoutResults(results);
+    
+    // Save payouts to database
+    try {
+      const payoutRecords = results.map(result => ({
+        employee_id: result.employeeId,
+        employee_name: result.employeeName,
+        calculation_type: calculationType,
+        amount: result.amount,
+        rate: result.rate,
+        project_value: calculationType === 'project' ? parseFloat(projectValue) || null : null,
+        hours_worked: calculationType === 'hourly' ? parseFloat(hoursWorked) || null : null,
+        collaborators_count: collaborationCount,
+      }));
+
+      const { error } = await supabase
+        .from('payouts')
+        .insert(payoutRecords);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Payouts calculated and recorded successfully",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error('Error saving payouts:', error);
+      toast({
+        title: "Warning", 
+        description: "Payouts calculated but failed to save records",
+        variant: "destructive",
+      });
+    }
   };
 
   const getTotalPayout = () => {
