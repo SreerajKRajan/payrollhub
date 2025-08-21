@@ -450,7 +450,7 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
                   <TableHead>Project/Time Period</TableHead>
                   <TableHead className="text-right">Amount ($)</TableHead>
                   <TableHead className="text-right">Rate</TableHead>
-                  <TableHead className="text-right">Hours</TableHead>
+                  <TableHead className="text-right">Hours/Value</TableHead>
                   <TableHead className="text-right">Date</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
