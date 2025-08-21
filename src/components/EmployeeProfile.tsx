@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { XCircle, Pencil, Trash2 } from "lucide-react";
+import { XCircle, Pencil, Trash2, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { EditPayoutDialog } from "./EditPayoutDialog";
@@ -22,6 +22,7 @@ interface Employee {
   position: string;
   status: 'active' | 'inactive' | 'on_leave';
   pay_scale_type: 'hourly' | 'project';
+  is_admin: boolean;
   hourly_rate?: number | null;
   project_rate_1_member?: number | null;
   project_rate_2_members?: number | null;
@@ -93,7 +94,15 @@ export function EmployeeProfile({ employee, onClose }: EmployeeProfileProps) {
       <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-elegant">
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <div>
-            <CardTitle>{employee.name}</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              {employee.name}
+              {employee.is_admin && (
+                <Badge variant="default" className="bg-primary/10 text-primary border-primary/20">
+                  <Shield className="h-3 w-3 mr-1" />
+                  Admin
+                </Badge>
+              )}
+            </CardTitle>
             <CardDescription>
               {employee.department} • {employee.position}
             </CardDescription>
