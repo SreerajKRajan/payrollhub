@@ -244,6 +244,13 @@ export function EmployeeList({ onAddEmployee, onEditEmployee }: EmployeeListProp
           </Card>
         ))}
       </div>
+
+      {profileEmployee && (
+        <EmployeeProfile 
+          employee={profileEmployee} 
+          onClose={() => setProfileEmployee(null)} 
+        />
+      )}
     </div>
   );
 }

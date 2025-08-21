@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { XCircle, Pencil } from "lucide-react";
+import { XCircle, Pencil, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { EditPayoutDialog } from "./EditPayoutDialog";
@@ -73,6 +73,21 @@ export function EmployeeProfile({ employee, onClose }: EmployeeProfileProps) {
 
   const total = payouts.reduce((sum, p) => sum + (p.amount || 0), 0);
 
+  const deletePayout = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this payout?')) return;
+    
+    try {
+      const { error } = await supabase.from('payouts').delete().eq('id', id);
+      if (error) throw error;
+      
+      toast({ title: 'Deleted', description: 'Payout deleted successfully' });
+      fetchPayouts();
+    } catch (err) {
+      console.error('Failed to delete payout', err);
+      toast({ title: 'Error', description: 'Failed to delete payout', variant: 'destructive' });
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-elegant">
@@ -138,9 +153,14 @@ export function EmployeeProfile({ employee, onClose }: EmployeeProfileProps) {
                         </TableCell>
                         <TableCell className="text-right">{new Date(p.created_at).toLocaleString()}</TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={() => setEditing(p)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1 justify-end">
+                            <Button variant="ghost" size="icon" onClick={() => setEditing(p)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => deletePayout(p.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

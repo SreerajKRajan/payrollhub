@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, TrendingUp } from "lucide-react";
+import { Pencil, TrendingUp, Trash2 } from "lucide-react";
 import { EditPayoutDialog } from "./EditPayoutDialog";
 
 interface Payout {
@@ -64,6 +64,21 @@ export function PayoutsReport({ refreshToken }: { refreshToken?: number | string
 
   const total = payouts.reduce((sum, p) => sum + (p.amount || 0), 0);
 
+  const deletePayout = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this payout?')) return;
+    
+    try {
+      const { error } = await supabase.from('payouts').delete().eq('id', id);
+      if (error) throw error;
+      
+      toast({ title: 'Deleted', description: 'Payout deleted successfully' });
+      fetchPayouts();
+    } catch (err) {
+      console.error('Failed to delete payout', err);
+      toast({ title: 'Error', description: 'Failed to delete payout', variant: 'destructive' });
+    }
+  };
+
   return (
     <Card className="shadow-card">
       <CardHeader>
@@ -110,9 +125,14 @@ export function PayoutsReport({ refreshToken }: { refreshToken?: number | string
                     </TableCell>
                     <TableCell className="text-right">{new Date(p.created_at).toLocaleString()}</TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => setEditing(p)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1 justify-end">
+                        <Button variant="ghost" size="icon" onClick={() => setEditing(p)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => deletePayout(p.id)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
