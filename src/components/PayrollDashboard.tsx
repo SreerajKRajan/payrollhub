@@ -7,7 +7,7 @@ import { EmployeeList } from "./EmployeeList";
 import { EmployeeForm } from "./EmployeeForm";
 import { PayrollCalculator } from "./PayrollCalculator";
 import { supabase } from "@/integrations/supabase/client";
-
+import { PayoutsReport } from "./PayoutsReport";
 export function PayrollDashboard() {
   const [activeTab, setActiveTab] = useState("employees");
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
@@ -164,20 +164,7 @@ export function PayrollDashboard() {
           </TabsContent>
 
           <TabsContent value="reports" className="space-y-6">
-            <Card className="shadow-card">
-              <CardHeader>
-                <CardTitle>Payroll Reports</CardTitle>
-                <CardDescription>
-                  Detailed analytics and reports coming soon
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="py-12 text-center">
-                <TrendingUp className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">
-                  Advanced reporting features will be available in the next update
-                </p>
-              </CardContent>
-            </Card>
+            <PayoutsReport refreshToken={stats.monthlyPayouts} />
           </TabsContent>
         </Tabs>
 

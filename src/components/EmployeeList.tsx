@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { User, Mail, Phone, Building, Briefcase, Edit, Trash2, Clock, Percent } from "lucide-react";
+import { User, Mail, Phone, Building, Briefcase, Edit, Trash2, Clock, Percent, Eye } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { EmployeeProfile } from "./EmployeeProfile";
 
 interface Employee {
   id: string;
@@ -31,6 +32,7 @@ interface EmployeeListProps {
 export function EmployeeList({ onAddEmployee, onEditEmployee }: EmployeeListProps) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
+  const [profileEmployee, setProfileEmployee] = useState<Employee | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -171,6 +173,14 @@ export function EmployeeList({ onAddEmployee, onEditEmployee }: EmployeeListProp
                   <Badge className={getStatusColor(employee.status)}>
                     {employee.status.replace('_', ' ')}
                   </Badge>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => setProfileEmployee(employee)}
+                    aria-label="View profile"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
                   <Button 
                     variant="ghost" 
                     size="icon"
