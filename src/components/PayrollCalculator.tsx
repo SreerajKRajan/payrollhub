@@ -37,7 +37,6 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
   const [projectValue, setProjectValue] = useState('');
   const [hoursWorked, setHoursWorked] = useState('');
   const [projectTitle, setProjectTitle] = useState('');
-  const [assignedMemberId, setAssignedMemberId] = useState('');
   const [quotedById, setQuotedById] = useState('');
   const [isFirstTime, setIsFirstTime] = useState(false);
   const [payoutResults, setPayoutResults] = useState<PayoutResult[]>([]);
@@ -158,7 +157,6 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
     
     // Save payouts to database
     try {
-      const assignedMember = employees.find(emp => emp.id === assignedMemberId);
       const quotedBy = employees.find(emp => emp.id === quotedById);
       
       const payoutRecords = results.map(result => ({
@@ -171,8 +169,8 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
         hours_worked: calculationType === 'hourly' ? parseFloat(hoursWorked) || null : null,
         collaborators_count: collaborationCount,
         project_title: projectTitle || null,
-        assigned_member_id: assignedMemberId || null,
-        assigned_member_name: assignedMember?.name || null,
+        assigned_member_id: null,
+        assigned_member_name: null,
         quoted_by_id: quotedById || null,
         quoted_by_name: quotedBy?.name || null,
         is_first_time: isFirstTime,
@@ -281,38 +279,20 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
           </div>
 
           {/* Team Assignment */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Assigned Member</Label>
-              <Select value={assignedMemberId} onValueChange={setAssignedMemberId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select assigned member" />
-                </SelectTrigger>
-                <SelectContent>
-                  {employees.map((employee) => (
-                    <SelectItem key={employee.id} value={employee.id}>
-                      {employee.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Quoted By</Label>
-              <Select value={quotedById} onValueChange={setQuotedById}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select who quoted" />
-                </SelectTrigger>
-                <SelectContent>
-                  {employees.map((employee) => (
-                    <SelectItem key={employee.id} value={employee.id}>
-                      {employee.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label>Quoted By</Label>
+            <Select value={quotedById} onValueChange={setQuotedById}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select who quoted" />
+              </SelectTrigger>
+              <SelectContent>
+                {employees.map((employee) => (
+                  <SelectItem key={employee.id} value={employee.id}>
+                    {employee.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Input Fields */}
