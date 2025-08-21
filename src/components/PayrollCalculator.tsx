@@ -137,6 +137,23 @@ export function PayrollCalculator({ onRecorded }: { onRecorded?: () => void }) {
       });
     });
 
+    // Add first-time bonus for quoted by person
+    if (isFirstTime && quotedById && calculationType === 'project') {
+      const quotedByEmployee = employees.find(emp => emp.id === quotedById);
+      if (quotedByEmployee) {
+        const projectVal = parseFloat(projectValue) || 0;
+        const bonusAmount = (projectVal * 30) / 100; // 30% bonus
+        
+        results.push({
+          employeeId: quotedByEmployee.id,
+          employeeName: `${quotedByEmployee.name} (First Time Bonus)`,
+          amount: bonusAmount,
+          rate: 30, // 30% rate
+          payType: 'project',
+        });
+      }
+    }
+
     setPayoutResults(results);
     
     // Save payouts to database
