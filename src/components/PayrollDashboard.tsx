@@ -131,13 +131,6 @@ export function PayrollDashboard() {
       icon: TrendingUp,
       color: "text-accent",
     },
-    {
-      title: "Avg. Hourly Rate",
-      value: `$${stats.avgHourlyRate.toFixed(0)}`,
-      description: "Across all employees",
-      icon: DollarSign,
-      color: "text-muted-foreground",
-    },
   ];
 
   return (
