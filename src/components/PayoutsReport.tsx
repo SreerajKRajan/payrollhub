@@ -29,9 +29,39 @@ interface Payout {
   created_at: string;
 }
 
+interface TimeEntry {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  check_in_time: string;
+  check_out_time: string | null;
+  total_hours: number | null;
+  status: string;
+  created_at: string;
+}
+
+interface ReportEntry {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  type: 'payout' | 'time_entry';
+  calculation_type: string;
+  amount: number;
+  rate: number;
+  project_value?: number | null;
+  hours_worked?: number | null;
+  collaborators_count?: number | null;
+  project_title?: string | null;
+  check_in_time?: string;
+  check_out_time?: string | null;
+  status?: string;
+  created_at: string;
+}
+
 export function PayoutsReport({ refreshToken }: { refreshToken?: number | string }) {
   const [payouts, setPayouts] = useState<Payout[]>([]);
-  const [employees, setEmployees] = useState<{id: string, name: string}[]>([]);
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+  const [employees, setEmployees] = useState<{id: string, name: string, hourly_rate: number | null}[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Payout | null>(null);
   
@@ -46,31 +76,65 @@ export function PayoutsReport({ refreshToken }: { refreshToken?: number | string
 
   useEffect(() => {
     fetchPayouts();
+    fetchTimeEntries();
     fetchEmployees();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshToken, filterDateFrom, filterDateTo]);
 
+  // Combine payouts and time entries into unified report data
+  const reportEntries = useMemo(() => {
+    const payoutEntries: ReportEntry[] = payouts.map(payout => ({
+      ...payout,
+      type: 'payout' as const,
+    }));
+
+    const timeEntryReports: ReportEntry[] = timeEntries
+      .filter(entry => entry.status === 'checked_out' && entry.total_hours && entry.total_hours > 0)
+      .map(entry => {
+        const employee = employees.find(emp => emp.id === entry.employee_id);
+        const hourlyRate = employee?.hourly_rate || 0;
+        const amount = (entry.total_hours || 0) * hourlyRate;
+        
+        return {
+          id: entry.id,
+          employee_id: entry.employee_id,
+          employee_name: entry.employee_name,
+          type: 'time_entry' as const,
+          calculation_type: 'hourly',
+          amount,
+          rate: hourlyRate,
+          hours_worked: entry.total_hours,
+          check_in_time: entry.check_in_time,
+          check_out_time: entry.check_out_time,
+          status: entry.status,
+          created_at: entry.created_at,
+        };
+      });
+
+    return [...payoutEntries, ...timeEntryReports];
+  }, [payouts, timeEntries, employees]);
+
   // Apply client-side filters
-  const filteredPayouts = useMemo(() => {
-    return payouts.filter(payout => {
+  const filteredEntries = useMemo(() => {
+    return reportEntries.filter(entry => {
       // Employee filter
-      if (filterEmployee !== 'all' && payout.employee_id !== filterEmployee) {
+      if (filterEmployee !== 'all' && entry.employee_id !== filterEmployee) {
         return false;
       }
       
       // Type filter
-      if (filterType !== 'all' && payout.calculation_type !== filterType) {
+      if (filterType !== 'all' && entry.calculation_type !== filterType) {
         return false;
       }
       
       // Project title filter
-      if (filterProjectTitle && !payout.project_title?.toLowerCase().includes(filterProjectTitle.toLowerCase())) {
+      if (filterProjectTitle && !entry.project_title?.toLowerCase().includes(filterProjectTitle.toLowerCase())) {
         return false;
       }
       
       return true;
     });
-  }, [payouts, filterEmployee, filterType, filterProjectTitle]);
+  }, [reportEntries, filterEmployee, filterType, filterProjectTitle]);
 
   const clearFilters = () => {
     setFilterEmployee('all');
@@ -84,7 +148,7 @@ export function PayoutsReport({ refreshToken }: { refreshToken?: number | string
     try {
       const { data, error } = await supabase
         .from('employees')
-        .select('id, name')
+        .select('id, name, hourly_rate')
         .eq('status', 'active')
         .order('name');
       
@@ -129,7 +193,33 @@ export function PayoutsReport({ refreshToken }: { refreshToken?: number | string
     }
   };
 
-  const total = filteredPayouts.reduce((sum, p) => sum + (p.amount || 0), 0);
+  const fetchTimeEntries = async () => {
+    try {
+      let query = supabase
+        .from('time_entries')
+        .select('id, employee_id, employee_name, check_in_time, check_out_time, total_hours, status, created_at')
+        .eq('status', 'checked_out')
+        .not('total_hours', 'is', null);
+
+      // Apply date filters
+      if (filterDateFrom) {
+        query = query.gte('created_at', filterDateFrom.toISOString());
+      }
+      if (filterDateTo) {
+        const endOfDay = new Date(filterDateTo);
+        endOfDay.setHours(23, 59, 59, 999);
+        query = query.lte('created_at', endOfDay.toISOString());
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
+      if (error) throw error;
+      setTimeEntries(data || []);
+    } catch (error) {
+      console.error('Error fetching time entries:', error);
+    }
+  };
+
+  const total = filteredEntries.reduce((sum, entry) => sum + (entry.amount || 0), 0);
 
   const deletePayout = async (id: string) => {
     if (!confirm('Are you sure you want to delete this payout?')) return;
@@ -154,7 +244,7 @@ export function PayoutsReport({ refreshToken }: { refreshToken?: number | string
           Payroll Reports
         </CardTitle>
         <CardDescription>
-          {loading ? 'Loading…' : `${filteredPayouts.length} of ${payouts.length} payouts • Total $${total.toFixed(2)}`}
+          {loading ? 'Loading…' : `${filteredEntries.length} of ${reportEntries.length} entries • Total $${total.toFixed(2)}`}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -198,11 +288,11 @@ export function PayoutsReport({ refreshToken }: { refreshToken?: number | string
                   <SelectTrigger className="h-10">
                     <SelectValue placeholder="All types" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All types</SelectItem>
-                    <SelectItem value="project">Project</SelectItem>
-                    <SelectItem value="hourly">Hourly</SelectItem>
-                  </SelectContent>
+                   <SelectContent>
+                     <SelectItem value="all">All types</SelectItem>
+                     <SelectItem value="project">Project</SelectItem>
+                     <SelectItem value="hourly">Hourly</SelectItem>
+                   </SelectContent>
                 </Select>
               </div>
 
@@ -277,9 +367,9 @@ export function PayoutsReport({ refreshToken }: { refreshToken?: number | string
         </Card>
 
         {/* Table */}
-        {filteredPayouts.length === 0 && !loading ? (
+        {filteredEntries.length === 0 && !loading ? (
           <div className="text-center py-10 text-muted-foreground">
-            {payouts.length === 0 ? "No payouts recorded yet." : "No payouts match your filters."}
+            {reportEntries.length === 0 ? "No records found yet." : "No records match your filters."}
           </div>
         ) : (
           <div className="w-full overflow-x-auto">
@@ -287,41 +377,68 @@ export function PayoutsReport({ refreshToken }: { refreshToken?: number | string
               <TableHeader>
                 <TableRow>
                   <TableHead>Employee</TableHead>
+                  <TableHead>Source</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>Project Title</TableHead>
+                  <TableHead>Project/Time Period</TableHead>
                   <TableHead className="text-right">Amount ($)</TableHead>
                   <TableHead className="text-right">Rate</TableHead>
-                  <TableHead className="text-right">Project/Hours</TableHead>
+                  <TableHead className="text-right">Hours</TableHead>
                   <TableHead className="text-right">Date</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPayouts.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.employee_name}</TableCell>
+                {filteredEntries.map((entry) => (
+                  <TableRow key={`${entry.type}-${entry.id}`}>
+                    <TableCell className="font-medium">{entry.employee_name}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{p.calculation_type}</Badge>
+                      <Badge variant={entry.type === 'payout' ? 'default' : 'outline'}>
+                        {entry.type === 'payout' ? 'Manual' : 'Time Clock'}
+                      </Badge>
                     </TableCell>
-                    <TableCell>{p.project_title || '-'}</TableCell>
-                    <TableCell className="text-right">{Number(p.amount ?? 0).toFixed(2)}</TableCell>
-                    <TableCell className="text-right">{Number(p.rate ?? 0)}{p.calculation_type === 'project' ? '%' : '/hr'}</TableCell>
-                    <TableCell className="text-right">
-                      {p.calculation_type === 'project' ? (
-                        p.project_value ? `$${Number(p.project_value).toFixed(2)}` : '-'
+                    <TableCell>
+                      <Badge variant="secondary">{entry.calculation_type}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {entry.type === 'payout' ? (
+                        entry.project_title || '-'
                       ) : (
-                        p.hours_worked ? `${Number(p.hours_worked)}` : '-'
+                        entry.check_in_time && entry.check_out_time ? (
+                          <span className="text-sm">
+                            {new Date(entry.check_in_time).toLocaleTimeString()} - {new Date(entry.check_out_time).toLocaleTimeString()}
+                          </span>
+                        ) : '-'
                       )}
                     </TableCell>
-                    <TableCell className="text-right">{new Date(p.created_at).toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{Number(entry.amount ?? 0).toFixed(2)}</TableCell>
+                    <TableCell className="text-right">
+                      {Number(entry.rate ?? 0)}{entry.calculation_type === 'project' ? '%' : '/hr'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {entry.calculation_type === 'project' ? (
+                        entry.project_value ? `$${Number(entry.project_value).toFixed(2)}` : '-'
+                      ) : (
+                        entry.hours_worked ? `${Number(entry.hours_worked).toFixed(2)}h` : '-'
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">{new Date(entry.created_at).toLocaleString()}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center gap-1 justify-end">
-                        <Button variant="ghost" size="icon" onClick={() => setEditing(p)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => deletePayout(p.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        {entry.type === 'payout' && (
+                          <>
+                            <Button variant="ghost" size="icon" onClick={() => setEditing(entry as Payout)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => deletePayout(entry.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </>
+                        )}
+                        {entry.type === 'time_entry' && (
+                          <Badge variant="outline" className="text-xs">
+                            Auto-calculated
+                          </Badge>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
