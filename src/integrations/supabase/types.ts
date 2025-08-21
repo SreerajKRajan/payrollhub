@@ -14,7 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      employees: {
+        Row: {
+          created_at: string
+          department: string
+          email: string
+          hourly_rate: number | null
+          id: string
+          name: string
+          pay_scale_type: Database["public"]["Enums"]["pay_scale_type"]
+          phone: string | null
+          position: string
+          project_rate_1_member: number | null
+          project_rate_2_members: number | null
+          project_rate_3_members: number | null
+          project_rate_4_members: number | null
+          project_rate_5_members: number | null
+          status: Database["public"]["Enums"]["employee_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          department: string
+          email: string
+          hourly_rate?: number | null
+          id?: string
+          name: string
+          pay_scale_type: Database["public"]["Enums"]["pay_scale_type"]
+          phone?: string | null
+          position: string
+          project_rate_1_member?: number | null
+          project_rate_2_members?: number | null
+          project_rate_3_members?: number | null
+          project_rate_4_members?: number | null
+          project_rate_5_members?: number | null
+          status?: Database["public"]["Enums"]["employee_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          department?: string
+          email?: string
+          hourly_rate?: number | null
+          id?: string
+          name?: string
+          pay_scale_type?: Database["public"]["Enums"]["pay_scale_type"]
+          phone?: string | null
+          position?: string
+          project_rate_1_member?: number | null
+          project_rate_2_members?: number | null
+          project_rate_3_members?: number | null
+          project_rate_4_members?: number | null
+          project_rate_5_members?: number | null
+          status?: Database["public"]["Enums"]["employee_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +79,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      employee_status: "active" | "inactive" | "on_leave"
+      pay_scale_type: "hourly" | "project"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +207,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      employee_status: ["active", "inactive", "on_leave"],
+      pay_scale_type: ["hourly", "project"],
+    },
   },
 } as const
