@@ -141,28 +141,27 @@ serve(async (req) => {
 
       payouts.push(regularPayout);
 
-      // First-time bonus if applicable
-      if (payload.first_time) {
-        const bonusRate = rate * 1.5; // 50% bonus
-        const bonusAmount = (payload.project_value * bonusRate) / 100;
-        
-        const bonusPayout = {
-          employee_id: employee.id,
-          employee_name: `${employee.name} (First Time Bonus)`,
-          calculation_type: 'project',
-          amount: bonusAmount,
-          rate: bonusRate,
-          project_value: payload.project_value,
-          collaborators_count: collaboratorsCount,
-          project_title: payload.project_title,
-          quoted_by_id: quotedByEmployee?.id || null,
-          quoted_by_name: quotedByEmployee?.name || payload.quoted_by_name || null,
-          is_first_time: true,
-          source: 'auto',
-        };
+    }
 
-        payouts.push(bonusPayout);
-      }
+    // First-time bonus payout assigned ONLY to the quoted-by employee
+    if (payload.first_time && quotedByEmployee) {
+      const bonusRate = 30; // fixed 30% first-time bonus
+      const bonusAmount = (payload.project_value * bonusRate) / 100;
+
+      payouts.push({
+        employee_id: quotedByEmployee.id,
+        employee_name: `${quotedByEmployee.name} (First Time Bonus)`,
+        calculation_type: 'project',
+        amount: bonusAmount,
+        rate: bonusRate,
+        project_value: payload.project_value,
+        collaborators_count: collaboratorsCount,
+        project_title: payload.project_title,
+        quoted_by_id: quotedByEmployee.id,
+        quoted_by_name: quotedByEmployee.name,
+        is_first_time: true,
+        source: 'auto',
+      });
     }
 
     if (payouts.length === 0) {
