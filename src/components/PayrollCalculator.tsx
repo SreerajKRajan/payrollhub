@@ -242,6 +242,7 @@ export function PayrollCalculator({ onRecorded, isAdmin = true }: { onRecorded?:
         quoted_by_id: quotedById || null,
         quoted_by_name: quotedBy?.name || null,
         is_first_time: isFirstTime,
+        source: 'manual',
       }));
 
       const { error } = await supabase

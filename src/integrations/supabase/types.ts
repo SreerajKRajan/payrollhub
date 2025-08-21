@@ -92,6 +92,7 @@ export type Database = {
           quoted_by_id: string | null
           quoted_by_name: string | null
           rate: number
+          source: string
           updated_at: string
         }
         Insert: {
@@ -111,6 +112,7 @@ export type Database = {
           quoted_by_id?: string | null
           quoted_by_name?: string | null
           rate: number
+          source?: string
           updated_at?: string
         }
         Update: {
@@ -130,6 +132,7 @@ export type Database = {
           quoted_by_id?: string | null
           quoted_by_name?: string | null
           rate?: number
+          source?: string
           updated_at?: string
         }
         Relationships: []

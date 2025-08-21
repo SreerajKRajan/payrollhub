@@ -26,6 +26,7 @@ interface Payout {
   hours_worked: number | null;
   collaborators_count: number | null;
   project_title: string | null;
+  source: string;
   created_at: string;
 }
 
@@ -52,6 +53,7 @@ interface ReportEntry {
   hours_worked?: number | null;
   collaborators_count?: number | null;
   project_title?: string | null;
+  source?: string;
   check_in_time?: string;
   check_out_time?: string | null;
   status?: string;
@@ -86,6 +88,7 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
     const payoutEntries: ReportEntry[] = payouts.map(payout => ({
       ...payout,
       type: 'payout' as const,
+      source: payout.source || 'manual',
     }));
 
     const timeEntryReports: ReportEntry[] = timeEntries
@@ -164,7 +167,7 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
       setLoading(true);
       let query = supabase
         .from('payouts')
-        .select('id, employee_id, employee_name, calculation_type, amount, rate, project_value, hours_worked, collaborators_count, project_title, created_at');
+        .select('id, employee_id, employee_name, calculation_type, amount, rate, project_value, hours_worked, collaborators_count, project_title, source, created_at');
 
       // Filter data for non-admin users
       if (!isAdmin && currentUser) {
@@ -280,6 +283,7 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
         quoted_by_id: null,
         quoted_by_name: null,
         is_first_time: false,
+        source: 'manual',
       };
 
       const { error } = await supabase.from('payouts').insert([payoutData]);
@@ -455,11 +459,15 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
                 {filteredEntries.map((entry) => (
                   <TableRow key={`${entry.type}-${entry.id}`}>
                     <TableCell className="font-medium">{entry.employee_name}</TableCell>
-                    <TableCell>
-                      <Badge variant={entry.type === 'payout' ? 'default' : 'outline'}>
-                        {entry.type === 'payout' ? 'Manual' : 'Time Clock'}
-                      </Badge>
-                    </TableCell>
+                     <TableCell>
+                       <Badge variant={entry.type === 'payout' 
+                         ? (entry.source === 'auto' ? 'default' : 'secondary') 
+                         : 'outline'}>
+                         {entry.type === 'payout' 
+                           ? (entry.source === 'auto' ? 'Auto' : 'Manual')
+                           : 'Time Clock'}
+                       </Badge>
+                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">{entry.calculation_type}</Badge>
                     </TableCell>

@@ -126,6 +126,7 @@ serve(async (req) => {
         quoted_by_id: quotedByEmployee?.id || null,
         quoted_by_name: quotedByEmployee?.name || payload.quoted_by_name || null,
         is_first_time: false,
+        source: 'auto',
       };
 
       payouts.push(regularPayout);
@@ -147,6 +148,7 @@ serve(async (req) => {
           quoted_by_id: quotedByEmployee?.id || null,
           quoted_by_name: quotedByEmployee?.name || payload.quoted_by_name || null,
           is_first_time: true,
+          source: 'auto',
         };
 
         payouts.push(bonusPayout);
