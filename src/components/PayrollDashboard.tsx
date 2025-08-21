@@ -49,12 +49,16 @@ export function PayrollDashboard() {
 
         if (employee) {
           setCurrentUser({ id: employee.id, name: employee.name, email: employee.email });
-          setIsAdmin(employee.is_admin || false);
+          const isEmployeeAdmin = employee.is_admin || false;
+          setIsAdmin(isEmployeeAdmin);
           
-          if (employee.pay_scale_type === 'hourly') {
+          // Show time clock for hourly employees or admins
+          if (employee.pay_scale_type === 'hourly' || isEmployeeAdmin) {
             setSelectedEmployee({ id: employee.id, name: employee.name });
             setShowTimeClockTab(true);
-            setActiveTab("timetracking");
+            if (employee.pay_scale_type === 'hourly') {
+              setActiveTab("timetracking");
+            }
           } else {
             setShowTimeClockTab(false);
           }
