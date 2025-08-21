@@ -58,7 +58,7 @@ interface ReportEntry {
   created_at: string;
 }
 
-export function PayoutsReport({ refreshToken, isAdmin = true }: { refreshToken?: number | string; isAdmin?: boolean }) {
+export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { refreshToken?: number | string; isAdmin?: boolean; currentUser?: { id: string; name: string; email: string } | null }) {
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [employees, setEmployees] = useState<{id: string, name: string, hourly_rate: number | null}[]>([]);
@@ -166,6 +166,11 @@ export function PayoutsReport({ refreshToken, isAdmin = true }: { refreshToken?:
         .from('payouts')
         .select('id, employee_id, employee_name, calculation_type, amount, rate, project_value, hours_worked, collaborators_count, project_title, created_at');
 
+      // Filter data for non-admin users
+      if (!isAdmin && currentUser) {
+        query = query.eq('employee_id', currentUser.id);
+      }
+
       // Apply date filters
       if (filterDateFrom) {
         query = query.gte('created_at', filterDateFrom.toISOString());
@@ -200,6 +205,11 @@ export function PayoutsReport({ refreshToken, isAdmin = true }: { refreshToken?:
         .select('id, employee_id, employee_name, check_in_time, check_out_time, total_hours, status, created_at')
         .eq('status', 'checked_out')
         .not('total_hours', 'is', null);
+
+      // Filter data for non-admin users
+      if (!isAdmin && currentUser) {
+        query = query.eq('employee_id', currentUser.id);
+      }
 
       // Apply date filters
       if (filterDateFrom) {

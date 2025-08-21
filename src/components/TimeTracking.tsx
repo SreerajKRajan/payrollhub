@@ -31,22 +31,22 @@ interface TimeEntry {
 
 interface TimeTrackingProps {
   preSelectedEmployee?: { id: string; name: string } | null;
+  isAdmin?: boolean;
+  currentUser?: { id: string; name: string; email: string } | null;
 }
 
-export function TimeTracking({ preSelectedEmployee }: TimeTrackingProps) {
+export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser }: TimeTrackingProps) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
-  const [currentUser, setCurrentUser] = useState<{ id: string; is_admin: boolean } | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchEmployees();
     fetchTimeEntries();
-    fetchCurrentUser();
   }, []);
 
   useEffect(() => {
@@ -54,29 +54,6 @@ export function TimeTracking({ preSelectedEmployee }: TimeTrackingProps) {
       setSelectedEmployee(preSelectedEmployee.id);
     }
   }, [preSelectedEmployee]);
-
-  const fetchCurrentUser = async () => {
-    // In a real app, this would come from authentication
-    // For now, we'll assume the first admin user or create a demo check
-    try {
-      const { data, error } = await supabase
-        .from('employees')
-        .select('id, is_admin')
-        .eq('is_admin', true)
-        .limit(1);
-      
-      if (error) throw error;
-      
-      if (data && data.length > 0) {
-        setCurrentUser({ id: data[0].id, is_admin: true });
-      } else {
-        setCurrentUser({ id: 'demo-user', is_admin: false });
-      }
-    } catch (error) {
-      console.error('Error fetching current user:', error);
-      setCurrentUser({ id: 'demo-user', is_admin: false });
-    }
-  };
 
   const fetchEmployees = async () => {
     try {
@@ -104,11 +81,17 @@ export function TimeTracking({ preSelectedEmployee }: TimeTrackingProps) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('time_entries')
         .select('*')
-        .gte('check_in_time', today.toISOString())
-        .order('check_in_time', { ascending: false });
+        .gte('check_in_time', today.toISOString());
+
+      // Filter by current user if not admin
+      if (!isAdmin && currentUser) {
+        query = query.eq('employee_id', currentUser.id);
+      }
+
+      const { data, error } = await query.order('check_in_time', { ascending: false });
       
       if (error) throw error;
       setTimeEntries(data || []);
@@ -425,7 +408,7 @@ export function TimeTracking({ preSelectedEmployee }: TimeTrackingProps) {
                         {entry.total_hours.toFixed(2)}h
                       </Badge>
                     )}
-                    {currentUser?.is_admin && (
+                    {isAdmin && (
                       <Button
                         variant="ghost"
                         size="sm"

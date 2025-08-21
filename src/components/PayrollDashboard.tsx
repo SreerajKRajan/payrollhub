@@ -213,9 +213,9 @@ export function PayrollDashboard() {
           </TabsList>
 
           {showTimeClockTab && (
-            <TabsContent value="timetracking" className="space-y-6">
-              <TimeTracking preSelectedEmployee={selectedEmployee} />
-            </TabsContent>
+          <TabsContent value="timetracking" className="space-y-6">
+            <TimeTracking preSelectedEmployee={selectedEmployee} isAdmin={isAdmin} currentUser={currentUser} />
+          </TabsContent>
           )}
 
           <TabsContent value="calculator" className="space-y-6">
@@ -223,7 +223,7 @@ export function PayrollDashboard() {
           </TabsContent>
 
           <TabsContent value="reports" className="space-y-6">
-            <PayoutsReport refreshToken={stats.monthlyHourlyPayouts + stats.monthlyProjectPayouts} isAdmin={isAdmin} />
+            <PayoutsReport refreshToken={stats.monthlyHourlyPayouts + stats.monthlyProjectPayouts} isAdmin={isAdmin} currentUser={currentUser} />
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">
