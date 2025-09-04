@@ -161,7 +161,7 @@ export function PayrollDashboard() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
           <div>
             <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              CrewClock
+              Payroll Hub
             </h1>
             <p className="text-muted-foreground mt-2">
               Manage your team's payroll with precision and style
