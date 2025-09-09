@@ -191,17 +191,19 @@ export function PayrollDashboard() {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className={`grid w-full ${showTimeClockTab ? (isAdmin ? 'grid-cols-4 lg:w-[500px]' : 'grid-cols-3 lg:w-[400px]') : (isAdmin ? 'grid-cols-3 lg:w-[400px]' : 'grid-cols-2 lg:w-[300px]')}`}>
+          <TabsList className={`grid w-full ${showTimeClockTab ? (isAdmin ? 'grid-cols-4 lg:w-[500px]' : 'grid-cols-2 lg:w-[300px]') : (isAdmin ? 'grid-cols-3 lg:w-[400px]' : 'grid-cols-2 lg:w-[300px]')}`}>
             {showTimeClockTab && (
               <TabsTrigger value="timetracking" className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
                 Time Clock
               </TabsTrigger>
             )}
-            <TabsTrigger value="calculator" className="flex items-center gap-2">
-              <Calculator className="h-4 w-4" />
-              Calculator
-            </TabsTrigger>
+            {(isAdmin || !showTimeClockTab) && (
+              <TabsTrigger value="calculator" className="flex items-center gap-2">
+                <Calculator className="h-4 w-4" />
+                Calculator
+              </TabsTrigger>
+            )}
             <TabsTrigger value="reports" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               Reports
@@ -220,9 +222,11 @@ export function PayrollDashboard() {
           </TabsContent>
           )}
 
-          <TabsContent value="calculator" className="space-y-6">
-            <PayrollCalculator onRecorded={fetchStats} isAdmin={isAdmin} />
-          </TabsContent>
+          {(isAdmin || !showTimeClockTab) && (
+            <TabsContent value="calculator" className="space-y-6">
+              <PayrollCalculator onRecorded={fetchStats} isAdmin={isAdmin} />
+            </TabsContent>
+          )}
 
           <TabsContent value="reports" className="space-y-6">
             <PayoutsReport refreshToken={stats.monthlyHourlyPayouts + stats.monthlyProjectPayouts} isAdmin={isAdmin} currentUser={currentUser} />
