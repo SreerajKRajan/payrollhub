@@ -512,23 +512,6 @@ export function PayrollCalculator({ onRecorded, isAdmin = true }: { onRecorded?:
                     <div className="flex items-center justify-between">
                       <div>
                         <h4 className="font-medium">{employee.name}</h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          {employee.pay_scale_type === 'hourly' ? (
-                            <>
-                              <Clock className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm text-muted-foreground">
-                                ${employee.hourly_rate || 0}/hr
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <Percent className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm text-muted-foreground">
-                                {employee.project_rate_1_member || 0}% (solo)
-                              </span>
-                            </>
-                          )}
-                        </div>
                       </div>
                       <div className={`w-4 h-4 rounded-full border-2 ${
                         selectedEmployees.includes(employee.id)
