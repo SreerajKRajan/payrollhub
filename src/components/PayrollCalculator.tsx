@@ -61,7 +61,9 @@ export function PayrollCalculator({ onRecorded, isAdmin = true }: { onRecorded?:
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [selectedTimeEntries, setSelectedTimeEntries] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [selectedTime, setSelectedTime] = useState('12:00');
+  const [selectedHour, setSelectedHour] = useState('12');
+  const [selectedMinute, setSelectedMinute] = useState('00');
+  const [selectedPeriod, setSelectedPeriod] = useState<'AM' | 'PM'>('PM');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -233,10 +235,16 @@ export function PayrollCalculator({ onRecorded, isAdmin = true }: { onRecorded?:
     try {
       const quotedBy = employees.find(emp => emp.id === quotedById);
       
-      // Combine selected date and time
-      const [hours, minutes] = selectedTime.split(':').map(Number);
+      // Convert 12-hour format to 24-hour format and combine with selected date
+      let hours24 = parseInt(selectedHour);
+      if (selectedPeriod === 'PM' && hours24 !== 12) {
+        hours24 += 12;
+      } else if (selectedPeriod === 'AM' && hours24 === 12) {
+        hours24 = 0;
+      }
+      
       const dateTime = new Date(selectedDate);
-      dateTime.setHours(hours, minutes, 0, 0);
+      dateTime.setHours(hours24, parseInt(selectedMinute), 0, 0);
 
       const payoutRecords = results.map(result => ({
         employee_id: result.employeeId,
@@ -374,13 +382,49 @@ export function PayrollCalculator({ onRecorded, isAdmin = true }: { onRecorded?:
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="job-time">Job Time</Label>
-              <Input
-                id="job-time"
-                type="time"
-                value={selectedTime}
-                onChange={(e) => setSelectedTime(e.target.value)}
-              />
+              <Label>Job Time</Label>
+              <div className="flex gap-2">
+                <Select value={selectedHour} onValueChange={setSelectedHour}>
+                  <SelectTrigger className="w-[80px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 12 }, (_, i) => {
+                      const hour = i + 1;
+                      return (
+                        <SelectItem key={hour} value={hour.toString()}>
+                          {hour}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <span className="flex items-center">:</span>
+                <Select value={selectedMinute} onValueChange={setSelectedMinute}>
+                  <SelectTrigger className="w-[80px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 60 }, (_, i) => {
+                      const minute = i.toString().padStart(2, '0');
+                      return (
+                        <SelectItem key={minute} value={minute}>
+                          {minute}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <Select value={selectedPeriod} onValueChange={(value: 'AM' | 'PM') => setSelectedPeriod(value)}>
+                  <SelectTrigger className="w-[80px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AM">AM</SelectItem>
+                    <SelectItem value="PM">PM</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             
             {calculationType === 'project' && (
