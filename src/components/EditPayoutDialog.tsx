@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,19 @@ export function EditPayoutDialog({ payout, open, onOpenChange, onSaved }: EditPa
   });
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+
+  // Recalculate amount when project value, rate, or collaborators count changes (for project-based payouts)
+  useEffect(() => {
+    if (payout.calculation_type === 'project') {
+      const projectValue = parseFloat(form.project_value);
+      const rate = parseFloat(form.rate);
+      
+      if (!isNaN(projectValue) && !isNaN(rate) && projectValue > 0 && rate > 0) {
+        const calculatedAmount = (projectValue * rate) / 100;
+        setForm((prev) => ({ ...prev, amount: calculatedAmount.toFixed(2) }));
+      }
+    }
+  }, [form.project_value, form.rate, form.collaborators_count, payout.calculation_type]);
 
   const handleChange = (key: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
