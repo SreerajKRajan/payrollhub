@@ -52,19 +52,22 @@ export function EditPayoutDialog({ payout, open, onOpenChange, onSaved }: EditPa
   // Recalculate amount based on last edited field
   useEffect(() => {
     if (payout.calculation_type !== 'project') return;
+    if (!lastEdited) return; // Only recalculate if user has edited a field
 
     const projectValue = parseFloat(form.project_value);
     const rate = parseFloat(form.rate);
     const collabCount = parseInt(form.collaborators_count) || 1;
 
     if (isNaN(projectValue) || projectValue <= 0 || isNaN(rate) || rate <= 0) {
+      setLastEdited(null);
       return;
     }
 
     const total = (projectValue * rate) / 100;
     const perCollaborator = total / Math.max(collabCount, 1);
     setForm(prev => ({ ...prev, amount: perCollaborator.toFixed(2) }));
-  }, [form.project_value, form.rate, form.collaborators_count, payout.calculation_type]);
+    setLastEdited(null);
+  }, [form.project_value, form.rate, form.collaborators_count, payout.calculation_type, lastEdited]);
 
   const handleChange = (key: keyof typeof form, value: string) => {
     setLastEdited(key as FormKey);
