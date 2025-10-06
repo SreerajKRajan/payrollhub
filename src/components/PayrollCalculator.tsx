@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Calculator, DollarSign, Users, Clock, Percent } from "lucide-react";
+import { Calculator, DollarSign, Users, Clock, Percent, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,8 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface Employee {
   id: string;
@@ -56,6 +60,7 @@ export function PayrollCalculator({ onRecorded, isAdmin = true }: { onRecorded?:
   const [useTrackedHours, setUseTrackedHours] = useState(false);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [selectedTimeEntries, setSelectedTimeEntries] = useState<string[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { toast } = useToast();
 
   useEffect(() => {
@@ -333,6 +338,32 @@ export function PayrollCalculator({ onRecorded, isAdmin = true }: { onRecorded?:
                 onChange={(e) => setProjectTitle(e.target.value)}
                 placeholder="Enter project title"
               />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Job Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !selectedDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(date) => date && setSelectedDate(date)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             
             {calculationType === 'project' && (
