@@ -32,6 +32,15 @@ export function EditPayoutDialog({ payout, open, onOpenChange, onSaved }: EditPa
     collaborators_count: payout.collaborators_count?.toString() ?? '',
   });
   const [saving, setSaving] = useState(false);
+  const [employeeRates, setEmployeeRates] = useState<{
+    project_rate_1_member?: number;
+    project_rate_2_members?: number;
+    project_rate_3_members?: number;
+    project_rate_4_members?: number;
+    project_rate_5_members?: number;
+  } | null>(null);
+  type FormKey = 'amount' | 'rate' | 'project_value' | 'hours_worked' | 'collaborators_count';
+  const [lastEdited, setLastEdited] = useState<FormKey | null>(null);
   const { toast } = useToast();
 
   // Reset form when payout changes
@@ -43,25 +52,80 @@ export function EditPayoutDialog({ payout, open, onOpenChange, onSaved }: EditPa
       hours_worked: payout.hours_worked?.toString() ?? '',
       collaborators_count: payout.collaborators_count?.toString() ?? '',
     });
+    setLastEdited(null);
   }, [payout]);
 
-  // Recalculate amount when project value or rate changes (for project-based payouts)
+  // Fetch employee rates when dialog opens
   useEffect(() => {
-    if (payout.calculation_type === 'project') {
-      const projectValue = parseFloat(form.project_value);
-      const rate = parseFloat(form.rate);
-      
-      if (!isNaN(projectValue) && !isNaN(rate) && projectValue > 0 && rate > 0) {
-        const calculatedAmount = (projectValue * rate) / 100;
-        setForm((prev) => ({ 
-          ...prev, 
-          amount: calculatedAmount.toFixed(2)
-        }));
-      }
+    if (open && payout.calculation_type === 'project') {
+      (async () => {
+        try {
+          const { data, error } = await supabase
+            .from('employees')
+            .select('project_rate_1_member, project_rate_2_members, project_rate_3_members, project_rate_4_members, project_rate_5_members')
+            .eq('id', payout.employee_id)
+            .maybeSingle();
+          if (error) throw error;
+          setEmployeeRates(data);
+        } catch (error) {
+          console.error('Error fetching employee rates:', error);
+        }
+      })();
     }
-  }, [form.project_value, form.rate, payout.calculation_type]);
+  }, [open, payout.employee_id, payout.calculation_type]);
+
+  // Recalculate amount based on last edited field
+  useEffect(() => {
+    if (payout.calculation_type !== 'project') return;
+    if (!lastEdited) return;
+
+    const projectValue = parseFloat(form.project_value);
+    if (isNaN(projectValue) || projectValue <= 0) {
+      setLastEdited(null);
+      return;
+    }
+
+    if (lastEdited === 'collaborators_count' && employeeRates) {
+      const collabCount = parseInt(form.collaborators_count) || 1;
+      let appropriateRate = 0;
+      switch (collabCount) {
+        case 1:
+          appropriateRate = employeeRates.project_rate_1_member || 0;
+          break;
+        case 2:
+          appropriateRate = employeeRates.project_rate_2_members || 0;
+          break;
+        case 3:
+          appropriateRate = employeeRates.project_rate_3_members || 0;
+          break;
+        case 4:
+          appropriateRate = employeeRates.project_rate_4_members || 0;
+          break;
+        case 5:
+        default:
+          appropriateRate = employeeRates.project_rate_5_members || 0;
+          break;
+      }
+      if (appropriateRate > 0) {
+        const calculatedAmount = (projectValue * appropriateRate) / 100;
+        setForm(prev => ({ ...prev, amount: calculatedAmount.toFixed(2) }));
+      }
+      setLastEdited(null);
+      return;
+    }
+
+    if (lastEdited === 'rate' || lastEdited === 'project_value') {
+      const rate = parseFloat(form.rate);
+      if (!isNaN(rate) && rate > 0) {
+        const calculatedAmount = (projectValue * rate) / 100;
+        setForm(prev => ({ ...prev, amount: calculatedAmount.toFixed(2) }));
+      }
+      setLastEdited(null);
+    }
+  }, [form.collaborators_count, form.rate, form.project_value, payout.calculation_type, employeeRates, lastEdited]);
 
   const handleChange = (key: keyof typeof form, value: string) => {
+    setLastEdited(key as FormKey);
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -108,26 +172,26 @@ export function EditPayoutDialog({ payout, open, onOpenChange, onSaved }: EditPa
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Amount ($)</Label>
-              <Input type="number" step="0.01" value={form.amount} onChange={(e) => handleChange('amount', e.target.value)} />
+              <Input type="number" step="0.01" value={form.amount} onChange={(e) => handleChange('amount', e.target.value)} aria-label="Amount in dollars" />
             </div>
             <div className="space-y-2">
               <Label>Rate ({payout.calculation_type === 'project' ? '%' : '/hr'})</Label>
-              <Input type="number" step="0.01" value={form.rate} onChange={(e) => handleChange('rate', e.target.value)} />
+              <Input type="number" step="0.01" value={form.rate} onChange={(e) => handleChange('rate', e.target.value)} aria-label="Rate percent" />
             </div>
             {payout.calculation_type === 'project' ? (
               <div className="space-y-2 md:col-span-2">
                 <Label>Project Value ($)</Label>
-                <Input type="number" step="0.01" value={form.project_value} onChange={(e) => handleChange('project_value', e.target.value)} />
+                <Input type="number" step="0.01" value={form.project_value} onChange={(e) => handleChange('project_value', e.target.value)} aria-label="Project value in dollars" />
               </div>
             ) : (
               <div className="space-y-2 md:col-span-2">
                 <Label>Hours Worked</Label>
-                <Input type="number" step="0.25" value={form.hours_worked} onChange={(e) => handleChange('hours_worked', e.target.value)} />
+                <Input type="number" step="0.25" value={form.hours_worked} onChange={(e) => handleChange('hours_worked', e.target.value)} aria-label="Hours worked" />
               </div>
             )}
             <div className="space-y-2 md:col-span-2">
               <Label>Collaborators Count</Label>
-              <Input type="number" step="1" value={form.collaborators_count} onChange={(e) => handleChange('collaborators_count', e.target.value)} />
+              <Input type="number" step="1" value={form.collaborators_count} onChange={(e) => handleChange('collaborators_count', e.target.value)} aria-label="Collaborators count" />
             </div>
           </div>
           <div className="flex gap-3">
