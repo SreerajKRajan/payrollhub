@@ -233,6 +233,12 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
   };
 
   const total = filteredEntries.reduce((sum, entry) => sum + (entry.amount || 0), 0);
+  const totalHours = filteredEntries.reduce((sum, entry) => {
+    if (entry.hours_worked) {
+      return sum + entry.hours_worked;
+    }
+    return sum;
+  }, 0);
 
   const deletePayout = async (id: string) => {
     if (!confirm('Are you sure you want to delete this payout?')) return;
@@ -312,7 +318,7 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
           Payroll Reports
         </CardTitle>
         <CardDescription>
-          {loading ? 'Loading…' : `${filteredEntries.length} of ${reportEntries.length} entries • Total $${total.toFixed(2)}`}
+          {loading ? 'Loading…' : `${filteredEntries.length} of ${reportEntries.length} entries • Total $${total.toFixed(2)}${totalHours > 0 ? ` • Total Hours: ${totalHours.toFixed(2)}` : ''}`}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
