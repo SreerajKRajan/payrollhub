@@ -61,6 +61,7 @@ export function PayrollCalculator({ onRecorded, isAdmin = true }: { onRecorded?:
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [selectedTimeEntries, setSelectedTimeEntries] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedTime, setSelectedTime] = useState('12:00');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -232,6 +233,11 @@ export function PayrollCalculator({ onRecorded, isAdmin = true }: { onRecorded?:
     try {
       const quotedBy = employees.find(emp => emp.id === quotedById);
       
+      // Combine selected date and time
+      const [hours, minutes] = selectedTime.split(':').map(Number);
+      const dateTime = new Date(selectedDate);
+      dateTime.setHours(hours, minutes, 0, 0);
+
       const payoutRecords = results.map(result => ({
         employee_id: result.employeeId,
         employee_name: result.employeeName,
@@ -248,7 +254,7 @@ export function PayrollCalculator({ onRecorded, isAdmin = true }: { onRecorded?:
         quoted_by_name: quotedBy?.name || null,
         is_first_time: isFirstTime,
         source: 'manual',
-        created_at: selectedDate.toISOString(),
+        created_at: dateTime.toISOString(),
       }));
 
       const { error } = await supabase
@@ -365,6 +371,16 @@ export function PayrollCalculator({ onRecorded, isAdmin = true }: { onRecorded?:
                   />
                 </PopoverContent>
               </Popover>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="job-time">Job Time</Label>
+              <Input
+                id="job-time"
+                type="time"
+                value={selectedTime}
+                onChange={(e) => setSelectedTime(e.target.value)}
+              />
             </div>
             
             {calculationType === 'project' && (
