@@ -32,13 +32,6 @@ export function EditPayoutDialog({ payout, open, onOpenChange, onSaved }: EditPa
     collaborators_count: payout.collaborators_count?.toString() ?? '',
   });
   const [saving, setSaving] = useState(false);
-  const [employeeRates, setEmployeeRates] = useState<{
-    project_rate_1_member?: number;
-    project_rate_2_members?: number;
-    project_rate_3_members?: number;
-    project_rate_4_members?: number;
-    project_rate_5_members?: number;
-  } | null>(null);
   type FormKey = 'amount' | 'rate' | 'project_value' | 'hours_worked' | 'collaborators_count';
   const [lastEdited, setLastEdited] = useState<FormKey | null>(null);
   const { toast } = useToast();
@@ -55,74 +48,23 @@ export function EditPayoutDialog({ payout, open, onOpenChange, onSaved }: EditPa
     setLastEdited(null);
   }, [payout]);
 
-  // Fetch employee rates when dialog opens
-  useEffect(() => {
-    if (open && payout.calculation_type === 'project') {
-      (async () => {
-        try {
-          const { data, error } = await supabase
-            .from('employees')
-            .select('project_rate_1_member, project_rate_2_members, project_rate_3_members, project_rate_4_members, project_rate_5_members')
-            .eq('id', payout.employee_id)
-            .maybeSingle();
-          if (error) throw error;
-          setEmployeeRates(data);
-        } catch (error) {
-          console.error('Error fetching employee rates:', error);
-        }
-      })();
-    }
-  }, [open, payout.employee_id, payout.calculation_type]);
 
   // Recalculate amount based on last edited field
   useEffect(() => {
     if (payout.calculation_type !== 'project') return;
-    if (!lastEdited) return;
 
     const projectValue = parseFloat(form.project_value);
-    if (isNaN(projectValue) || projectValue <= 0) {
-      setLastEdited(null);
+    const rate = parseFloat(form.rate);
+    const collabCount = parseInt(form.collaborators_count) || 1;
+
+    if (isNaN(projectValue) || projectValue <= 0 || isNaN(rate) || rate <= 0) {
       return;
     }
 
-    if (lastEdited === 'collaborators_count' && employeeRates) {
-      const collabCount = parseInt(form.collaborators_count) || 1;
-      let appropriateRate = 0;
-      switch (collabCount) {
-        case 1:
-          appropriateRate = employeeRates.project_rate_1_member || 0;
-          break;
-        case 2:
-          appropriateRate = employeeRates.project_rate_2_members || 0;
-          break;
-        case 3:
-          appropriateRate = employeeRates.project_rate_3_members || 0;
-          break;
-        case 4:
-          appropriateRate = employeeRates.project_rate_4_members || 0;
-          break;
-        case 5:
-        default:
-          appropriateRate = employeeRates.project_rate_5_members || 0;
-          break;
-      }
-      if (appropriateRate > 0) {
-        const calculatedAmount = (projectValue * appropriateRate) / 100;
-        setForm(prev => ({ ...prev, amount: calculatedAmount.toFixed(2) }));
-      }
-      setLastEdited(null);
-      return;
-    }
-
-    if (lastEdited === 'rate' || lastEdited === 'project_value') {
-      const rate = parseFloat(form.rate);
-      if (!isNaN(rate) && rate > 0) {
-        const calculatedAmount = (projectValue * rate) / 100;
-        setForm(prev => ({ ...prev, amount: calculatedAmount.toFixed(2) }));
-      }
-      setLastEdited(null);
-    }
-  }, [form.collaborators_count, form.rate, form.project_value, payout.calculation_type, employeeRates, lastEdited]);
+    const total = (projectValue * rate) / 100;
+    const perCollaborator = total / Math.max(collabCount, 1);
+    setForm(prev => ({ ...prev, amount: perCollaborator.toFixed(2) }));
+  }, [form.project_value, form.rate, form.collaborators_count, payout.calculation_type]);
 
   const handleChange = (key: keyof typeof form, value: string) => {
     setLastEdited(key as FormKey);
