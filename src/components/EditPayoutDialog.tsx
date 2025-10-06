@@ -39,7 +39,20 @@ export function EditPayoutDialog({ payout, open, onOpenChange, onSaved }: EditPa
     project_rate_4_members?: number;
     project_rate_5_members?: number;
   } | null>(null);
+  const [initialCollabCount, setInitialCollabCount] = useState(payout.collaborators_count?.toString() ?? '');
   const { toast } = useToast();
+
+  // Reset form when payout changes
+  useEffect(() => {
+    setForm({
+      amount: payout.amount?.toString() ?? '',
+      rate: payout.rate?.toString() ?? '',
+      project_value: payout.project_value?.toString() ?? '',
+      hours_worked: payout.hours_worked?.toString() ?? '',
+      collaborators_count: payout.collaborators_count?.toString() ?? '',
+    });
+    setInitialCollabCount(payout.collaborators_count?.toString() ?? '');
+  }, [payout]);
 
   // Fetch employee rates when dialog opens
   useEffect(() => {
@@ -63,9 +76,9 @@ export function EditPayoutDialog({ payout, open, onOpenChange, onSaved }: EditPa
     }
   };
 
-  // Recalculate amount when project value, rate, or collaborators count changes (for project-based payouts)
+  // Recalculate amount ONLY when collaborators count actually changes (not on initial load)
   useEffect(() => {
-    if (payout.calculation_type === 'project' && employeeRates) {
+    if (payout.calculation_type === 'project' && employeeRates && form.collaborators_count !== initialCollabCount) {
       const projectValue = parseFloat(form.project_value);
       const collabCount = parseInt(form.collaborators_count) || 1;
       
@@ -99,7 +112,7 @@ export function EditPayoutDialog({ payout, open, onOpenChange, onSaved }: EditPa
         }));
       }
     }
-  }, [form.project_value, form.collaborators_count, payout.calculation_type, employeeRates]);
+  }, [form.collaborators_count, payout.calculation_type, employeeRates, initialCollabCount]);
 
   const handleChange = (key: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
