@@ -440,6 +440,30 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
           </CardContent>
         </Card>
 
+        {/* Summary Cards */}
+        {(filterEmployee !== 'all' || filterDateFrom || filterDateTo) && filteredEntries.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="p-4">
+                <div className="text-sm text-muted-foreground mb-1">Total Amount</div>
+                <div className="text-2xl font-bold">${total.toFixed(2)}</div>
+              </CardContent>
+            </Card>
+            <Card className="border-accent/20 bg-accent/5">
+              <CardContent className="p-4">
+                <div className="text-sm text-muted-foreground mb-1">Total Hours</div>
+                <div className="text-2xl font-bold">{totalHours.toFixed(2)} hrs</div>
+              </CardContent>
+            </Card>
+            <Card className="border-muted/20 bg-muted/5">
+              <CardContent className="p-4">
+                <div className="text-sm text-muted-foreground mb-1">Records</div>
+                <div className="text-2xl font-bold">{filteredEntries.length}</div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Table */}
         {filteredEntries.length === 0 && !loading ? (
           <div className="text-center py-10 text-muted-foreground">
