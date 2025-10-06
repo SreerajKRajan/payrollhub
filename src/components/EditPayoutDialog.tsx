@@ -32,20 +32,74 @@ export function EditPayoutDialog({ payout, open, onOpenChange, onSaved }: EditPa
     collaborators_count: payout.collaborators_count?.toString() ?? '',
   });
   const [saving, setSaving] = useState(false);
+  const [employeeRates, setEmployeeRates] = useState<{
+    project_rate_1_member?: number;
+    project_rate_2_members?: number;
+    project_rate_3_members?: number;
+    project_rate_4_members?: number;
+    project_rate_5_members?: number;
+  } | null>(null);
   const { toast } = useToast();
+
+  // Fetch employee rates when dialog opens
+  useEffect(() => {
+    if (open && payout.calculation_type === 'project') {
+      fetchEmployeeRates();
+    }
+  }, [open, payout.employee_id, payout.calculation_type]);
+
+  const fetchEmployeeRates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('project_rate_1_member, project_rate_2_members, project_rate_3_members, project_rate_4_members, project_rate_5_members')
+        .eq('id', payout.employee_id)
+        .single();
+      
+      if (error) throw error;
+      setEmployeeRates(data);
+    } catch (error) {
+      console.error('Error fetching employee rates:', error);
+    }
+  };
 
   // Recalculate amount when project value, rate, or collaborators count changes (for project-based payouts)
   useEffect(() => {
-    if (payout.calculation_type === 'project') {
+    if (payout.calculation_type === 'project' && employeeRates) {
       const projectValue = parseFloat(form.project_value);
-      const rate = parseFloat(form.rate);
+      const collabCount = parseInt(form.collaborators_count) || 1;
       
-      if (!isNaN(projectValue) && !isNaN(rate) && projectValue > 0 && rate > 0) {
-        const calculatedAmount = (projectValue * rate) / 100;
-        setForm((prev) => ({ ...prev, amount: calculatedAmount.toFixed(2) }));
+      // Get the appropriate rate based on collaborators count
+      let appropriateRate = 0;
+      switch (collabCount) {
+        case 1:
+          appropriateRate = employeeRates.project_rate_1_member || 0;
+          break;
+        case 2:
+          appropriateRate = employeeRates.project_rate_2_members || 0;
+          break;
+        case 3:
+          appropriateRate = employeeRates.project_rate_3_members || 0;
+          break;
+        case 4:
+          appropriateRate = employeeRates.project_rate_4_members || 0;
+          break;
+        case 5:
+        default:
+          appropriateRate = employeeRates.project_rate_5_members || 0;
+          break;
+      }
+      
+      if (!isNaN(projectValue) && projectValue > 0 && appropriateRate > 0) {
+        const calculatedAmount = (projectValue * appropriateRate) / 100;
+        setForm((prev) => ({ 
+          ...prev, 
+          amount: calculatedAmount.toFixed(2),
+          rate: appropriateRate.toFixed(2)
+        }));
       }
     }
-  }, [form.project_value, form.rate, form.collaborators_count, payout.calculation_type]);
+  }, [form.project_value, form.collaborators_count, payout.calculation_type, employeeRates]);
 
   const handleChange = (key: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
