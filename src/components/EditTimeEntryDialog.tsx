@@ -34,7 +34,10 @@ export function EditTimeEntryDialog({ entry, open, onOpenChange, onSaved }: Edit
   const toLocalTime = (utcTime: string, timezoneOffset?: number) => {
     const date = new Date(utcTime);
     const offset = timezoneOffset !== undefined ? timezoneOffset : new Date().getTimezoneOffset();
-    return addMinutes(date, -offset);
+    // Convert UTC to the entry's local time, then compensate for browser's timezone
+    const localDate = addMinutes(date, -offset);
+    const currentBrowserOffset = new Date().getTimezoneOffset();
+    return addMinutes(localDate, currentBrowserOffset);
   };
 
   // Helper: Get timezone display

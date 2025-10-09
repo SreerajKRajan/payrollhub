@@ -58,7 +58,14 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
     const date = new Date(utcTime);
     // If timezone_offset is stored, use it; otherwise use current offset
     const offset = timezoneOffset !== undefined ? timezoneOffset : userTimezoneOffset;
-    return addMinutes(date, -offset);
+    // offset is negative for timezones ahead of UTC (e.g., -330 for UTC+5:30)
+    // To convert UTC to local, we subtract the offset (which adds the hours)
+    // But we need to return a date that format() will interpret correctly
+    // So we subtract the user's current timezone offset to compensate for format()'s auto-conversion
+    const localDate = addMinutes(date, -offset);
+    // Compensate for format()'s timezone application by adjusting back
+    const currentBrowserOffset = new Date().getTimezoneOffset();
+    return addMinutes(localDate, currentBrowserOffset);
   };
 
   // Helper: Get timezone display string
