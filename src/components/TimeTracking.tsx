@@ -76,16 +76,6 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
   };
 
   useEffect(() => {
-    const testUTC = "2025-10-10T12:00:00Z"; // 12:00 UTC test time
-    const zones = ["Europe/Berlin", "Asia/Kolkata", "Asia/Manila", "America/New_York"];
-
-    console.log("🌍 Timezone Conversion Test:");
-    zones.forEach((tz) => {
-      console.log(tz, "→", new Date(testUTC).toLocaleString("en-US", { timeZone: tz }));
-    });
-  }, []);
-
-  useEffect(() => {
     fetchEmployees();
     fetchTimeEntries();
   }, []);

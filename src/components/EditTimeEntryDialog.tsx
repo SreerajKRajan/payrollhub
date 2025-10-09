@@ -59,12 +59,6 @@ export function EditTimeEntryDialog({ entry, open, onOpenChange, onSaved }: Edit
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const testUTC = "2025-10-10T12:00:00Z"; // 12:00 UTC test time
-
-  ["Europe/Berlin", "Asia/Kolkata", "Asia/Manila", "America/New_York"].forEach((tz) => {
-    console.log(tz, "→", new Date(testUTC).toLocaleString("en-US", { timeZone: tz }));
-  });
-
   const handleSave = async () => {
     setIsLoading(true);
     try {
