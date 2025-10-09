@@ -71,9 +71,15 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
   // Helper: Get timezone display string
   const getTimezoneDisplay = () => {
     const offsetHours = Math.abs(userTimezoneOffset) / 60;
-    const sign = userTimezoneOffset <= 0 ? '+' : '-';
+    const sign = userTimezoneOffset <= 0 ? "+" : "-";
     return `UTC${sign}${offsetHours.toFixed(1)}`;
   };
+
+  const testUTC = "2025-10-10T12:00:00Z"; // 12:00 UTC test time
+
+  ["Europe/Berlin", "Asia/Kolkata", "Asia/Manila", "America/New_York"].forEach((tz) => {
+    console.log(tz, "→", new Date(testUTC).toLocaleString("en-US", { timeZone: tz }));
+  });
 
   useEffect(() => {
     fetchEmployees();
@@ -89,16 +95,16 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
   const fetchEmployees = async () => {
     try {
       const { data, error } = await supabase
-        .from('employees')
-        .select('id, name, pay_scale_type, status')
-        .eq('status', 'active')
-        .eq('pay_scale_type', 'hourly')
-        .order('name');
-      
+        .from("employees")
+        .select("id, name, pay_scale_type, status")
+        .eq("status", "active")
+        .eq("pay_scale_type", "hourly")
+        .order("name");
+
       if (error) throw error;
       setEmployees(data || []);
     } catch (error) {
-      console.error('Error fetching employees:', error);
+      console.error("Error fetching employees:", error);
       toast({
         title: "Error",
         description: "Failed to load employees",
@@ -111,33 +117,30 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
     try {
       // Get start of day in user's local timezone
       const localStartOfDay = getLocalStartOfDay();
-      
-      console.log('🕐 Timezone Debug:', {
+
+      console.log("🕐 Timezone Debug:", {
         userOffset: userTimezoneOffset,
         timezone: getTimezoneDisplay(),
         localStartOfDay,
-        now: new Date().toISOString()
+        now: new Date().toISOString(),
       });
-      
-      let query = supabase
-        .from('time_entries')
-        .select('*')
-        .gte('check_in_time', localStartOfDay);
+
+      let query = supabase.from("time_entries").select("*").gte("check_in_time", localStartOfDay);
 
       // Filter by current user if not admin
       if (!isAdmin && currentUser) {
-        query = query.eq('employee_id', currentUser.id);
+        query = query.eq("employee_id", currentUser.id);
       }
 
-      const { data, error } = await query.order('check_in_time', { ascending: false });
-      
+      const { data, error } = await query.order("check_in_time", { ascending: false });
+
       if (error) throw error;
-      
+
       console.log(`✅ Fetched ${data?.length || 0} time entries for today (${getTimezoneDisplay()})`);
-      
+
       setTimeEntries(data || []);
     } catch (error) {
-      console.error('Error fetching time entries:', error);
+      console.error("Error fetching time entries:", error);
       toast({
         title: "Error",
         description: "Failed to load time entries",
@@ -156,12 +159,12 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
       return;
     }
 
-    const employee = employees.find(emp => emp.id === selectedEmployee);
+    const employee = employees.find((emp) => emp.id === selectedEmployee);
     if (!employee) return;
 
     // Check if employee is already checked in
     const existingEntry = timeEntries.find(
-      entry => entry.employee_id === selectedEmployee && entry.status === 'checked_in'
+      (entry) => entry.employee_id === selectedEmployee && entry.status === "checked_in",
     );
 
     if (existingEntry) {
@@ -176,39 +179,41 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
     setIsLoading(true);
     try {
       const checkInTime = new Date();
-      
-      console.log('🔵 Check-in:', {
+
+      console.log("🔵 Check-in:", {
         employee: employee.name,
         time: checkInTime.toISOString(),
         timezone: getTimezoneDisplay(),
-        offset: userTimezoneOffset
+        offset: userTimezoneOffset,
       });
 
       const { data, error } = await supabase
-        .from('time_entries')
-        .insert([{
-          employee_id: selectedEmployee,
-          employee_name: employee.name,
-          check_in_time: checkInTime.toISOString(),
-          notes: notes || null,
-          status: 'checked_in',
-          timezone_offset: userTimezoneOffset
-        }])
+        .from("time_entries")
+        .insert([
+          {
+            employee_id: selectedEmployee,
+            employee_name: employee.name,
+            check_in_time: checkInTime.toISOString(),
+            notes: notes || null,
+            status: "checked_in",
+            timezone_offset: userTimezoneOffset,
+          },
+        ])
         .select()
         .single();
 
       if (error) throw error;
 
-      setTimeEntries(prev => [data, ...prev]);
+      setTimeEntries((prev) => [data, ...prev]);
       setNotes("");
       setSelectedEmployee("");
-      
+
       toast({
         title: "Success",
-        description: `${employee.name} checked in successfully at ${format(checkInTime, 'HH:mm')} (${getTimezoneDisplay()})`,
+        description: `${employee.name} checked in successfully at ${format(checkInTime, "HH:mm")} (${getTimezoneDisplay()})`,
       });
     } catch (error) {
-      console.error('Error checking in:', error);
+      console.error("Error checking in:", error);
       toast({
         title: "Error",
         description: "Failed to check in",
@@ -220,42 +225,40 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
   };
 
   const handleCheckOut = async (entryId: string) => {
-    const entry = timeEntries.find(e => e.id === entryId);
+    const entry = timeEntries.find((e) => e.id === entryId);
     if (!entry) return;
 
     setIsLoading(true);
     try {
       const checkOutTime = new Date();
-      
-      console.log('🔴 Check-out:', {
+
+      console.log("🔴 Check-out:", {
         employee: entry.employee_name,
         checkInTime: entry.check_in_time,
         checkOutTime: checkOutTime.toISOString(),
-        timezone: getTimezoneDisplay()
+        timezone: getTimezoneDisplay(),
       });
 
       const { data, error } = await supabase
-        .from('time_entries')
+        .from("time_entries")
         .update({
           check_out_time: checkOutTime.toISOString(),
-          status: 'checked_out'
+          status: "checked_out",
         })
-        .eq('id', entryId)
+        .eq("id", entryId)
         .select()
         .single();
 
       if (error) throw error;
 
-      setTimeEntries(prev => 
-        prev.map(entry => entry.id === entryId ? data : entry)
-      );
+      setTimeEntries((prev) => prev.map((entry) => (entry.id === entryId ? data : entry)));
 
       toast({
         title: "Success",
-        description: `${entry.employee_name} checked out successfully at ${format(checkOutTime, 'HH:mm')} (${getTimezoneDisplay()})`,
+        description: `${entry.employee_name} checked out successfully at ${format(checkOutTime, "HH:mm")} (${getTimezoneDisplay()})`,
       });
     } catch (error) {
-      console.error('Error checking out:', error);
+      console.error("Error checking out:", error);
       toast({
         title: "Error",
         description: "Failed to check out",
@@ -269,18 +272,18 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
   const getWorkingTime = (checkInTime: string, checkOutTime?: string) => {
     const startTime = new Date(checkInTime);
     const endTime = checkOutTime ? new Date(checkOutTime) : new Date();
-    
+
     const totalMinutes = differenceInMinutes(endTime, startTime);
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
-    
+
     return `${hours}h ${minutes}m`;
   };
 
-  const checkedInEmployees = timeEntries.filter(entry => entry.status === 'checked_in');
-  
+  const checkedInEmployees = timeEntries.filter((entry) => entry.status === "checked_in");
+
   // Filter entries based on local timezone date
-  const todayEntries = timeEntries.filter(entry => {
+  const todayEntries = timeEntries.filter((entry) => {
     const localCheckInTime = toLocalTime(entry.check_in_time, entry.timezone_offset);
     const localToday = new Date();
     return localCheckInTime.toDateString() === localToday.toDateString();
@@ -308,7 +311,7 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="shadow-card">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
@@ -320,16 +323,14 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="shadow-card">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
               <CheckCircle className="h-5 w-5 text-accent" />
               <div>
                 <p className="text-sm text-muted-foreground">Completed Today</p>
-                <p className="text-2xl font-bold">
-                  {todayEntries.filter(e => e.status === 'checked_out').length}
-                </p>
+                <p className="text-2xl font-bold">{todayEntries.filter((e) => e.status === "checked_out").length}</p>
               </div>
             </div>
           </CardContent>
@@ -343,9 +344,7 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
             <Clock className="h-5 w-5" />
             Employee Check-in
           </CardTitle>
-          <CardDescription>
-            Select an employee to check them in for their shift
-          </CardDescription>
+          <CardDescription>Select an employee to check them in for their shift</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col md:flex-row gap-4">
@@ -371,11 +370,7 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
                 className="min-h-[40px] max-h-[80px]"
               />
             </div>
-            <Button 
-              onClick={handleCheckIn}
-              disabled={isLoading || !selectedEmployee}
-              className="whitespace-nowrap"
-            >
+            <Button onClick={handleCheckIn} disabled={isLoading || !selectedEmployee} className="whitespace-nowrap">
               <CheckCircle className="h-4 w-4 mr-2" />
               Check In
             </Button>
@@ -391,23 +386,18 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
               <Clock className="h-5 w-5 text-primary" />
               Active Sessions
             </CardTitle>
-            <CardDescription>
-              Employees currently checked in
-            </CardDescription>
+            <CardDescription>Employees currently checked in</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {checkedInEmployees.map((entry) => (
-                <div 
-                  key={entry.id} 
-                  className="flex items-center justify-between p-4 border rounded-lg bg-primary/5"
-                >
+                <div key={entry.id} className="flex items-center justify-between p-4 border rounded-lg bg-primary/5">
                   <div className="flex items-center gap-4">
                     <div className="w-3 h-3 bg-primary rounded-full animate-pulse"></div>
                     <div>
                       <p className="font-medium">{entry.employee_name}</p>
                       <p className="text-sm text-muted-foreground">
-                        Started: {format(toLocalTime(entry.check_in_time, entry.timezone_offset), 'HH:mm')}
+                        Started: {format(toLocalTime(entry.check_in_time, entry.timezone_offset), "HH:mm")}
                         {entry.notes && ` • ${entry.notes}`}
                       </p>
                     </div>
@@ -416,12 +406,7 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
                     <Badge variant="outline" className="text-primary border-primary">
                       {getWorkingTime(entry.check_in_time)}
                     </Badge>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleCheckOut(entry.id)}
-                      disabled={isLoading}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => handleCheckOut(entry.id)} disabled={isLoading}>
                       <XCircle className="h-4 w-4 mr-2" />
                       Check Out
                     </Button>
@@ -440,50 +425,32 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
             <Calendar className="h-5 w-5" />
             Today's Time Entries
           </CardTitle>
-          <CardDescription>
-            All check-ins and check-outs for today
-          </CardDescription>
+          <CardDescription>All check-ins and check-outs for today</CardDescription>
         </CardHeader>
         <CardContent>
           {todayEntries.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              No time entries for today yet
-            </p>
+            <p className="text-center text-muted-foreground py-8">No time entries for today yet</p>
           ) : (
             <div className="space-y-3">
               {todayEntries.map((entry) => (
-                <div 
-                  key={entry.id} 
-                  className="flex items-center justify-between p-4 border rounded-lg"
-                >
+                <div key={entry.id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div>
                     <p className="font-medium">{entry.employee_name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {format(toLocalTime(entry.check_in_time, entry.timezone_offset), 'HH:mm')}
+                      {format(toLocalTime(entry.check_in_time, entry.timezone_offset), "HH:mm")}
                       {entry.check_out_time && (
-                        <> - {format(toLocalTime(entry.check_out_time, entry.timezone_offset), 'HH:mm')}</>
+                        <> - {format(toLocalTime(entry.check_out_time, entry.timezone_offset), "HH:mm")}</>
                       )}
                       {entry.notes && ` • ${entry.notes}`}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge 
-                      variant={entry.status === 'checked_in' ? 'default' : 'secondary'}
-                    >
-                      {entry.status === 'checked_in' ? 'Active' : 'Completed'}
+                    <Badge variant={entry.status === "checked_in" ? "default" : "secondary"}>
+                      {entry.status === "checked_in" ? "Active" : "Completed"}
                     </Badge>
-                    {entry.total_hours && (
-                      <Badge variant="outline">
-                        {entry.total_hours.toFixed(2)}h
-                      </Badge>
-                    )}
+                    {entry.total_hours && <Badge variant="outline">{entry.total_hours.toFixed(2)}h</Badge>}
                     {isAdmin && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditingEntry(entry)}
-                        className="h-8 w-8 p-0"
-                      >
+                      <Button variant="ghost" size="sm" onClick={() => setEditingEntry(entry)} className="h-8 w-8 p-0">
                         <Edit3 className="h-4 w-4" />
                       </Button>
                     )}
