@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Edit3, Trash2 } from "lucide-react";
+import { Edit3, Trash2, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, addMinutes } from "date-fns";
 
 interface TimeEntry {
   id: string;
@@ -19,6 +19,7 @@ interface TimeEntry {
   status: string;
   notes?: string;
   created_at: string;
+  timezone_offset?: number;
 }
 
 interface EditTimeEntryDialogProps {
@@ -29,9 +30,27 @@ interface EditTimeEntryDialogProps {
 }
 
 export function EditTimeEntryDialog({ entry, open, onOpenChange, onSaved }: EditTimeEntryDialogProps) {
+  // Helper: Convert UTC to local time using stored timezone offset
+  const toLocalTime = (utcTime: string, timezoneOffset?: number) => {
+    const date = new Date(utcTime);
+    const offset = timezoneOffset !== undefined ? timezoneOffset : new Date().getTimezoneOffset();
+    return addMinutes(date, -offset);
+  };
+
+  // Helper: Get timezone display
+  const getTimezoneDisplay = () => {
+    const offset = entry.timezone_offset !== undefined ? entry.timezone_offset : new Date().getTimezoneOffset();
+    const offsetHours = Math.abs(offset) / 60;
+    const sign = offset <= 0 ? '+' : '-';
+    return `UTC${sign}${offsetHours.toFixed(1)}`;
+  };
+
+  const localCheckIn = toLocalTime(entry.check_in_time, entry.timezone_offset);
+  const localCheckOut = entry.check_out_time ? toLocalTime(entry.check_out_time, entry.timezone_offset) : null;
+
   const [formData, setFormData] = useState({
-    check_in_time: entry.check_in_time.split('T')[1].slice(0, 5), // Extract time part
-    check_out_time: entry.check_out_time ? entry.check_out_time.split('T')[1].slice(0, 5) : '',
+    check_in_time: format(localCheckIn, 'HH:mm'),
+    check_out_time: localCheckOut ? format(localCheckOut, 'HH:mm') : '',
     notes: entry.notes || '',
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -40,34 +59,53 @@ export function EditTimeEntryDialog({ entry, open, onOpenChange, onSaved }: Edit
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      const checkInDate = new Date(entry.check_in_time);
-      const checkOutDate = entry.check_out_time ? new Date(entry.check_out_time) : null;
+      // Work with local times and convert to UTC for storage
+      const baseDate = toLocalTime(entry.check_in_time, entry.timezone_offset);
 
-      // Create new dates with updated times
+      // Create new local times with updated times
       const [checkInHours, checkInMinutes] = formData.check_in_time.split(':');
-      const newCheckInTime = new Date(checkInDate);
-      newCheckInTime.setHours(parseInt(checkInHours), parseInt(checkInMinutes));
+      const newLocalCheckIn = new Date(baseDate);
+      newLocalCheckIn.setHours(parseInt(checkInHours), parseInt(checkInMinutes), 0, 0);
 
-      let newCheckOutTime = null;
+      // Convert local time back to UTC for storage
+      const offset = entry.timezone_offset !== undefined ? entry.timezone_offset : new Date().getTimezoneOffset();
+      const newCheckInTimeUTC = addMinutes(newLocalCheckIn, offset);
+
+      let newCheckOutTimeUTC = null;
       let calculatedHours = null;
       
       if (formData.check_out_time) {
         const [checkOutHours, checkOutMinutes] = formData.check_out_time.split(':');
-        newCheckOutTime = new Date(checkOutDate || checkInDate);
-        newCheckOutTime.setHours(parseInt(checkOutHours), parseInt(checkOutMinutes));
+        const newLocalCheckOut = new Date(baseDate);
+        newLocalCheckOut.setHours(parseInt(checkOutHours), parseInt(checkOutMinutes), 0, 0);
+        
+        // Handle case where checkout is next day
+        if (newLocalCheckOut < newLocalCheckIn) {
+          newLocalCheckOut.setDate(newLocalCheckOut.getDate() + 1);
+        }
+        
+        // Convert to UTC
+        newCheckOutTimeUTC = addMinutes(newLocalCheckOut, offset);
         
         // Calculate total hours
-        const timeDiff = newCheckOutTime.getTime() - newCheckInTime.getTime();
+        const timeDiff = newCheckOutTimeUTC.getTime() - newCheckInTimeUTC.getTime();
         calculatedHours = timeDiff / (1000 * 60 * 60); // Convert to hours
       }
 
+      console.log('💾 Saving time entry:', {
+        checkIn: newCheckInTimeUTC.toISOString(),
+        checkOut: newCheckOutTimeUTC?.toISOString(),
+        hours: calculatedHours,
+        timezone: getTimezoneDisplay()
+      });
+
       const updateData: any = {
-        check_in_time: newCheckInTime.toISOString(),
+        check_in_time: newCheckInTimeUTC.toISOString(),
         notes: formData.notes || null,
       };
 
-      if (newCheckOutTime) {
-        updateData.check_out_time = newCheckOutTime.toISOString();
+      if (newCheckOutTimeUTC) {
+        updateData.check_out_time = newCheckOutTimeUTC.toISOString();
         updateData.total_hours = calculatedHours;
         updateData.status = 'checked_out';
       } else if (entry.check_out_time) {
@@ -142,8 +180,12 @@ export function EditTimeEntryDialog({ entry, open, onOpenChange, onSaved }: Edit
         <DialogHeader>
           <DialogTitle>Edit Time Entry</DialogTitle>
           <DialogDescription>
-            Modify the time entry for {entry.employee_name} on {format(new Date(entry.check_in_time), 'MMM dd, yyyy')}
+            Modify the time entry for {entry.employee_name} on {format(localCheckIn, 'MMM dd, yyyy')}
           </DialogDescription>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2">
+            <Globe className="h-3 w-3" />
+            <span>Times shown in: {getTimezoneDisplay()}</span>
+          </div>
         </DialogHeader>
         
         <div className="space-y-4">

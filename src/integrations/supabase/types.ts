@@ -101,6 +101,56 @@ export type Database = {
         }
         Relationships: []
       }
+      form_submissions: {
+        Row: {
+          created_at: string
+          document_id: string
+          id: string
+          id_verification_results: Json | null
+          ocr_data: Json | null
+          submission_date: string
+          total_documents_count: number | null
+          updated_at: string
+          user_id: string
+          validation_results: Json | null
+          validation_status: string
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          id?: string
+          id_verification_results?: Json | null
+          ocr_data?: Json | null
+          submission_date?: string
+          total_documents_count?: number | null
+          updated_at?: string
+          user_id: string
+          validation_results?: Json | null
+          validation_status?: string
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          id?: string
+          id_verification_results?: Json | null
+          ocr_data?: Json | null
+          submission_date?: string
+          total_documents_count?: number | null
+          updated_at?: string
+          user_id?: string
+          validation_results?: Json | null
+          validation_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_submissions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "scanned_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payouts: {
         Row: {
           amount: number
@@ -164,6 +214,54 @@ export type Database = {
         }
         Relationships: []
       }
+      scanned_documents: {
+        Row: {
+          created_at: string
+          document_type: string
+          file_name: string
+          file_path: string
+          file_size: number
+          id: string
+          mime_type: string
+          page_number: number | null
+          processing_status: string
+          scan_date: string
+          submission_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_type?: string
+          file_name: string
+          file_path: string
+          file_size: number
+          id?: string
+          mime_type: string
+          page_number?: number | null
+          processing_status?: string
+          scan_date?: string
+          submission_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          document_type?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          id?: string
+          mime_type?: string
+          page_number?: number | null
+          processing_status?: string
+          scan_date?: string
+          submission_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       time_entries: {
         Row: {
           check_in_time: string
@@ -174,6 +272,7 @@ export type Database = {
           id: string
           notes: string | null
           status: string
+          timezone_offset: number | null
           total_hours: number | null
           updated_at: string
         }
@@ -186,6 +285,7 @@ export type Database = {
           id?: string
           notes?: string | null
           status?: string
+          timezone_offset?: number | null
           total_hours?: number | null
           updated_at?: string
         }
@@ -198,8 +298,36 @@ export type Database = {
           id?: string
           notes?: string | null
           status?: string
+          timezone_offset?: number | null
           total_hours?: number | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      user_profiles: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
