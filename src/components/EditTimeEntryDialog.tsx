@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { format, addMinutes } from "date-fns";
+import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
+import { toUserLocalTime, fromUserLocalTime } from "@/hooks/useUserTimezone";
 
 interface TimeEntry {
   id: string;
@@ -27,29 +29,17 @@ interface EditTimeEntryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
+  userTimezone: string;
 }
 
-export function EditTimeEntryDialog({ entry, open, onOpenChange, onSaved }: EditTimeEntryDialogProps) {
-  // Helper: Convert UTC to local time using stored timezone offset
-  const toLocalTime = (utcTime: string, timezoneOffset?: number) => {
-    const date = new Date(utcTime);
-    const offset = timezoneOffset !== undefined ? timezoneOffset : new Date().getTimezoneOffset();
-    // Convert UTC to the entry's local time, then compensate for browser's timezone
-    const localDate = addMinutes(date, -offset);
-    const currentBrowserOffset = new Date().getTimezoneOffset();
-    return addMinutes(localDate, currentBrowserOffset);
-  };
+export function EditTimeEntryDialog({ entry, open, onOpenChange, onSaved, userTimezone }: EditTimeEntryDialogProps) {
+  const localCheckIn = toUserLocalTime(entry.check_in_time, userTimezone);
+  const localCheckOut = entry.check_out_time ? toUserLocalTime(entry.check_out_time, userTimezone) : null;
 
-  // Helper: Get timezone display
   const getTimezoneDisplay = () => {
-    const offset = entry.timezone_offset !== undefined ? entry.timezone_offset : new Date().getTimezoneOffset();
-    const offsetHours = Math.abs(offset) / 60;
-    const sign = offset <= 0 ? "+" : "-";
-    return `UTC${sign}${offsetHours.toFixed(1)}`;
+    const abbrev = formatInTimeZone(new Date(), userTimezone, "zzz");
+    return abbrev;
   };
-
-  const localCheckIn = toLocalTime(entry.check_in_time, entry.timezone_offset);
-  const localCheckOut = entry.check_out_time ? toLocalTime(entry.check_out_time, entry.timezone_offset) : null;
 
   const [formData, setFormData] = useState({
     check_in_time: format(localCheckIn, "HH:mm"),
@@ -62,44 +52,40 @@ export function EditTimeEntryDialog({ entry, open, onOpenChange, onSaved }: Edit
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      // Work with local times and convert to UTC for storage
-      const baseDate = toLocalTime(entry.check_in_time, entry.timezone_offset);
-
-      // Create new local times with updated times
+      // Parse times and build local dates in user's timezone
       const [checkInHours, checkInMinutes] = formData.check_in_time.split(":");
-      const newLocalCheckIn = new Date(baseDate);
+      const newLocalCheckIn = new Date(localCheckIn);
       newLocalCheckIn.setHours(parseInt(checkInHours), parseInt(checkInMinutes), 0, 0);
 
-      // Convert local time back to UTC for storage
-      const offset = entry.timezone_offset !== undefined ? entry.timezone_offset : new Date().getTimezoneOffset();
-      const newCheckInTimeUTC = addMinutes(newLocalCheckIn, offset);
+      // Convert local time to UTC for storage
+      const newCheckInTimeUTC = fromUserLocalTime(newLocalCheckIn, userTimezone);
 
-      let newCheckOutTimeUTC = null;
-      let calculatedHours = null;
+      let newCheckOutTimeUTC: Date | null = null;
+      let calculatedHours: number | null = null;
 
       if (formData.check_out_time) {
         const [checkOutHours, checkOutMinutes] = formData.check_out_time.split(":");
-        const newLocalCheckOut = new Date(baseDate);
+        const newLocalCheckOut = new Date(localCheckIn);
         newLocalCheckOut.setHours(parseInt(checkOutHours), parseInt(checkOutMinutes), 0, 0);
 
-        // Handle case where checkout is next day
+        // Handle next-day checkout
         if (newLocalCheckOut < newLocalCheckIn) {
           newLocalCheckOut.setDate(newLocalCheckOut.getDate() + 1);
         }
 
-        // Convert to UTC
-        newCheckOutTimeUTC = addMinutes(newLocalCheckOut, offset);
+        newCheckOutTimeUTC = fromUserLocalTime(newLocalCheckOut, userTimezone);
 
-        // Calculate total hours
         const timeDiff = newCheckOutTimeUTC.getTime() - newCheckInTimeUTC.getTime();
-        calculatedHours = timeDiff / (1000 * 60 * 60); // Convert to hours
+        calculatedHours = timeDiff / (1000 * 60 * 60);
       }
 
       console.log("💾 Saving time entry:", {
-        checkIn: newCheckInTimeUTC.toISOString(),
-        checkOut: newCheckOutTimeUTC?.toISOString(),
+        checkInUTC: newCheckInTimeUTC.toISOString(),
+        checkInLocal: formatInTimeZone(newCheckInTimeUTC, userTimezone, "yyyy-MM-dd HH:mm:ss zzz"),
+        checkOutUTC: newCheckOutTimeUTC?.toISOString(),
+        checkOutLocal: newCheckOutTimeUTC ? formatInTimeZone(newCheckOutTimeUTC, userTimezone, "yyyy-MM-dd HH:mm:ss zzz") : null,
         hours: calculatedHours,
-        timezone: getTimezoneDisplay(),
+        timezone: userTimezone,
       });
 
       const updateData: any = {

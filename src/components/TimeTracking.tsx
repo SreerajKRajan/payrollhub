@@ -7,8 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
-import { format, differenceInHours, differenceInMinutes, startOfDay, addMinutes } from "date-fns";
+import { format, differenceInMinutes } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { EditTimeEntryDialog } from "./EditTimeEntryDialog";
+import { useUserTimezone, toUserLocalTime, fromUserLocalTime, getStartOfDayInUserTz } from "@/hooks/useUserTimezone";
 
 interface Employee {
   id: string;
@@ -43,37 +45,9 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
   const [notes, setNotes] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
-  const [userTimezoneOffset] = useState(() => new Date().getTimezoneOffset());
   const { toast } = useToast();
+  const timezoneInfo = useUserTimezone(currentUser?.email);
 
-  // Helper: Get start of day in user's local timezone
-  const getLocalStartOfDay = () => {
-    const now = new Date();
-    const localStart = startOfDay(now);
-    return localStart.toISOString();
-  };
-
-  // Helper: Convert UTC time to user's local time for display
-  const toLocalTime = (utcTime: string, timezoneOffset?: number) => {
-    const date = new Date(utcTime);
-    // If timezone_offset is stored, use it; otherwise use current offset
-    const offset = timezoneOffset !== undefined ? timezoneOffset : userTimezoneOffset;
-    // offset is negative for timezones ahead of UTC (e.g., -330 for UTC+5:30)
-    // To convert UTC to local, we subtract the offset (which adds the hours)
-    // But we need to return a date that format() will interpret correctly
-    // So we subtract the user's current timezone offset to compensate for format()'s auto-conversion
-    const localDate = addMinutes(date, -offset);
-    // Compensate for format()'s timezone application by adjusting back
-    const currentBrowserOffset = new Date().getTimezoneOffset();
-    return addMinutes(localDate, currentBrowserOffset);
-  };
-
-  // Helper: Get timezone display string
-  const getTimezoneDisplay = () => {
-    const offsetHours = Math.abs(userTimezoneOffset) / 60;
-    const sign = userTimezoneOffset <= 0 ? "+" : "-";
-    return `UTC${sign}${offsetHours.toFixed(1)}`;
-  };
 
   useEffect(() => {
     fetchEmployees();
@@ -109,19 +83,18 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
 
   const fetchTimeEntries = async () => {
     try {
-      // Get start of day in user's local timezone
-      const localStartOfDay = getLocalStartOfDay();
+      const startOfDayUTC = getStartOfDayInUserTz(timezoneInfo.timezone);
 
       console.log("🕐 Timezone Debug:", {
-        userOffset: userTimezoneOffset,
-        timezone: getTimezoneDisplay(),
-        localStartOfDay,
+        userTimezone: timezoneInfo.timezone,
+        offset: timezoneInfo.offset,
+        abbreviation: timezoneInfo.abbreviation,
+        startOfDayUTC: startOfDayUTC.toISOString(),
         now: new Date().toISOString(),
       });
 
-      let query = supabase.from("time_entries").select("*").gte("check_in_time", localStartOfDay);
+      let query = supabase.from("time_entries").select("*").gte("check_in_time", startOfDayUTC.toISOString());
 
-      // Filter by current user if not admin
       if (!isAdmin && currentUser) {
         query = query.eq("employee_id", currentUser.id);
       }
@@ -130,7 +103,7 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
 
       if (error) throw error;
 
-      console.log(`✅ Fetched ${data?.length || 0} time entries for today (${getTimezoneDisplay()})`);
+      console.log(`✅ Fetched ${data?.length || 0} time entries for today (${timezoneInfo.abbreviation} ${timezoneInfo.offset})`);
 
       setTimeEntries(data || []);
     } catch (error) {
@@ -172,13 +145,15 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
 
     setIsLoading(true);
     try {
-      const checkInTime = new Date();
+      const checkInTimeUTC = new Date();
+      const localCheckInTime = toUserLocalTime(checkInTimeUTC, timezoneInfo.timezone);
 
       console.log("🔵 Check-in:", {
         employee: employee.name,
-        time: checkInTime.toISOString(),
-        timezone: getTimezoneDisplay(),
-        offset: userTimezoneOffset,
+        timeUTC: checkInTimeUTC.toISOString(),
+        timeLocal: formatInTimeZone(checkInTimeUTC, timezoneInfo.timezone, "yyyy-MM-dd HH:mm:ss zzz"),
+        timezone: timezoneInfo.timezone,
+        offset: timezoneInfo.offset,
       });
 
       const { data, error } = await supabase
@@ -187,10 +162,10 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
           {
             employee_id: selectedEmployee,
             employee_name: employee.name,
-            check_in_time: checkInTime.toISOString(),
+            check_in_time: checkInTimeUTC.toISOString(),
             notes: notes || null,
             status: "checked_in",
-            timezone_offset: userTimezoneOffset,
+            timezone_offset: null, // No longer needed
           },
         ])
         .select()
@@ -204,7 +179,7 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
 
       toast({
         title: "Success",
-        description: `${employee.name} checked in successfully at ${format(checkInTime, "HH:mm")} (${getTimezoneDisplay()})`,
+        description: `${employee.name} checked in at ${format(localCheckInTime, "HH:mm")} (${timezoneInfo.abbreviation} ${timezoneInfo.offset})`,
       });
     } catch (error) {
       console.error("Error checking in:", error);
@@ -224,19 +199,21 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
 
     setIsLoading(true);
     try {
-      const checkOutTime = new Date();
+      const checkOutTimeUTC = new Date();
+      const localCheckOutTime = toUserLocalTime(checkOutTimeUTC, timezoneInfo.timezone);
 
       console.log("🔴 Check-out:", {
         employee: entry.employee_name,
         checkInTime: entry.check_in_time,
-        checkOutTime: checkOutTime.toISOString(),
-        timezone: getTimezoneDisplay(),
+        checkOutTimeUTC: checkOutTimeUTC.toISOString(),
+        checkOutTimeLocal: formatInTimeZone(checkOutTimeUTC, timezoneInfo.timezone, "yyyy-MM-dd HH:mm:ss zzz"),
+        timezone: timezoneInfo.timezone,
       });
 
       const { data, error } = await supabase
         .from("time_entries")
         .update({
-          check_out_time: checkOutTime.toISOString(),
+          check_out_time: checkOutTimeUTC.toISOString(),
           status: "checked_out",
         })
         .eq("id", entryId)
@@ -249,7 +226,7 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
 
       toast({
         title: "Success",
-        description: `${entry.employee_name} checked out successfully at ${format(checkOutTime, "HH:mm")} (${getTimezoneDisplay()})`,
+        description: `${entry.employee_name} checked out at ${format(localCheckOutTime, "HH:mm")} (${timezoneInfo.abbreviation} ${timezoneInfo.offset})`,
       });
     } catch (error) {
       console.error("Error checking out:", error);
@@ -276,21 +253,23 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
 
   const checkedInEmployees = timeEntries.filter((entry) => entry.status === "checked_in");
 
-  // Filter entries based on local timezone date
+  // Filter entries based on user's timezone date
   const todayEntries = timeEntries.filter((entry) => {
-    const localCheckInTime = toLocalTime(entry.check_in_time, entry.timezone_offset);
-    const localToday = new Date();
+    const localCheckInTime = toUserLocalTime(entry.check_in_time, timezoneInfo.timezone);
+    const localToday = toUserLocalTime(new Date(), timezoneInfo.timezone);
     return localCheckInTime.toDateString() === localToday.toDateString();
   });
 
   return (
     <div className="space-y-6">
       {/* Timezone Indicator */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-4 py-2 rounded-lg">
-        <Globe className="h-4 w-4" />
-        <span>Your timezone: {getTimezoneDisplay()}</span>
-        <span className="text-xs">({Intl.DateTimeFormat().resolvedOptions().timeZone})</span>
-      </div>
+      {!timezoneInfo.isLoading && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-4 py-2 rounded-lg">
+          <Globe className="h-4 w-4" />
+          <span>Your timezone: {timezoneInfo.abbreviation} ({timezoneInfo.offset})</span>
+          <span className="text-xs">({timezoneInfo.timezone})</span>
+        </div>
+      )}
 
       {/* Header Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -391,7 +370,7 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
                     <div>
                       <p className="font-medium">{entry.employee_name}</p>
                       <p className="text-sm text-muted-foreground">
-                        Started: {format(toLocalTime(entry.check_in_time, entry.timezone_offset), "HH:mm")}
+                        Started: {format(toUserLocalTime(entry.check_in_time, timezoneInfo.timezone), "HH:mm")}
                         {entry.notes && ` • ${entry.notes}`}
                       </p>
                     </div>
@@ -431,9 +410,9 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
                   <div>
                     <p className="font-medium">{entry.employee_name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {format(toLocalTime(entry.check_in_time, entry.timezone_offset), "HH:mm")}
+                      {format(toUserLocalTime(entry.check_in_time, timezoneInfo.timezone), "HH:mm")}
                       {entry.check_out_time && (
-                        <> - {format(toLocalTime(entry.check_out_time, entry.timezone_offset), "HH:mm")}</>
+                        <> - {format(toUserLocalTime(entry.check_out_time, timezoneInfo.timezone), "HH:mm")}</>
                       )}
                       {entry.notes && ` • ${entry.notes}`}
                     </p>
@@ -466,6 +445,7 @@ export function TimeTracking({ preSelectedEmployee, isAdmin = true, currentUser 
             fetchTimeEntries();
             setEditingEntry(null);
           }}
+          userTimezone={timezoneInfo.timezone}
         />
       )}
     </div>
