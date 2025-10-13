@@ -25,6 +25,7 @@ interface Employee {
   status: 'active' | 'inactive' | 'on_leave';
   pay_scale_type: 'hourly' | 'project';
   is_admin: boolean;
+  timezone: string;
   hourly_rate?: number;
   project_rate_1_member?: number;
   project_rate_2_members?: number;
@@ -42,6 +43,7 @@ interface FormData {
   status: 'active' | 'inactive' | 'on_leave';
   pay_scale_type: 'hourly' | 'project';
   is_admin: boolean;
+  timezone: string;
   hourly_rate: string;
   project_rate_1_member: string;
   project_rate_2_members: string;
@@ -60,6 +62,7 @@ export function EmployeeForm({ onClose, onSuccess, employee }: EmployeeFormProps
     status: employee?.status || 'active',
     pay_scale_type: employee?.pay_scale_type || 'hourly',
     is_admin: employee?.is_admin || false,
+    timezone: employee?.timezone || 'America/Chicago',
     hourly_rate: employee?.hourly_rate?.toString() || '',
     project_rate_1_member: employee?.project_rate_1_member?.toString() || '',
     project_rate_2_members: employee?.project_rate_2_members?.toString() || '',
@@ -88,6 +91,7 @@ export function EmployeeForm({ onClose, onSuccess, employee }: EmployeeFormProps
         status: formData.status,
         pay_scale_type: formData.pay_scale_type,
         is_admin: formData.is_admin,
+        timezone: formData.timezone,
       };
 
       if (formData.pay_scale_type === 'hourly') {
@@ -215,6 +219,25 @@ export function EmployeeForm({ onClose, onSuccess, employee }: EmployeeFormProps
                       <SelectItem value="active">Active</SelectItem>
                       <SelectItem value="inactive">Inactive</SelectItem>
                       <SelectItem value="on_leave">On Leave</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="timezone">Timezone</Label>
+                  <Select value={formData.timezone} onValueChange={(value) => handleInputChange('timezone', value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="America/Chicago">Central Time (America/Chicago)</SelectItem>
+                      <SelectItem value="America/New_York">Eastern Time (America/New_York)</SelectItem>
+                      <SelectItem value="America/Los_Angeles">Pacific Time (America/Los_Angeles)</SelectItem>
+                      <SelectItem value="America/Denver">Mountain Time (America/Denver)</SelectItem>
+                      <SelectItem value="Asia/Manila">Philippines (Asia/Manila)</SelectItem>
+                      <SelectItem value="Asia/Kolkata">India (Asia/Kolkata)</SelectItem>
+                      <SelectItem value="Europe/London">UK (Europe/London)</SelectItem>
+                      <SelectItem value="Europe/Paris">Central Europe (Europe/Paris)</SelectItem>
+                      <SelectItem value="Australia/Sydney">Australia (Australia/Sydney)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

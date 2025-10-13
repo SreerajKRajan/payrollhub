@@ -59,6 +59,7 @@ export type Database = {
           project_rate_4_members: number | null
           project_rate_5_members: number | null
           status: Database["public"]["Enums"]["employee_status"]
+          timezone: string
           updated_at: string
         }
         Insert: {
@@ -78,6 +79,7 @@ export type Database = {
           project_rate_4_members?: number | null
           project_rate_5_members?: number | null
           status?: Database["public"]["Enums"]["employee_status"]
+          timezone?: string
           updated_at?: string
         }
         Update: {
@@ -97,6 +99,7 @@ export type Database = {
           project_rate_4_members?: number | null
           project_rate_5_members?: number | null
           status?: Database["public"]["Enums"]["employee_status"]
+          timezone?: string
           updated_at?: string
         }
         Relationships: []
