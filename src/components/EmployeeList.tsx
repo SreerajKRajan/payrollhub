@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, Mail, Phone, Building, Briefcase, Edit, Trash2, Clock, Percent, Eye, Search, Shield } from "lucide-react";
+import { User, Mail, Phone, Building, Briefcase, Edit, Trash2, Clock, Percent, Eye, Search, Shield, Globe } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +24,7 @@ interface Employee {
   project_rate_4_members?: number;
   project_rate_5_members?: number;
   is_admin: boolean;
+  timezone?: string;
 }
 
 interface EmployeeListProps {
@@ -79,6 +80,20 @@ export function EmployeeList({ onAddEmployee, onEditEmployee }: EmployeeListProp
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getTimezoneAbbr = (timezone?: string) => {
+    if (!timezone) return 'CST';
+    try {
+      const formatted = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        timeZoneName: 'short'
+      }).formatToParts(new Date());
+      const tzPart = formatted.find(part => part.type === 'timeZoneName');
+      return tzPart?.value || timezone.split('/')[1] || 'UTC';
+    } catch {
+      return timezone.split('/')[1] || 'UTC';
     }
   };
 
@@ -272,6 +287,14 @@ export function EmployeeList({ onAddEmployee, onEditEmployee }: EmployeeListProp
                     <Percent className="h-4 w-4 text-accent" />
                   )}
                   <span className="font-medium">{formatRate(employee)}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm text-muted-foreground">Timezone</h4>
+                <div className="flex items-center gap-2 text-sm">
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                  <span>{getTimezoneAbbr(employee.timezone)} ({employee.timezone || 'America/Chicago'})</span>
                 </div>
               </div>
 
