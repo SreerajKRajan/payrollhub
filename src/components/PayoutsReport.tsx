@@ -44,6 +44,7 @@ interface TimeEntry {
   total_hours: number | null;
   status: string;
   created_at: string;
+  notes?: string | null;
 }
 
 interface ReportEntry {
@@ -63,6 +64,8 @@ interface ReportEntry {
   check_out_time?: string | null;
   status?: string;
   created_at: string;
+  is_edited?: boolean;
+  edit_reason?: string | null;
 }
 
 export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { refreshToken?: number | string; isAdmin?: boolean; currentUser?: { id: string; name: string; email: string } | null }) {
@@ -116,6 +119,8 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
           check_out_time: entry.check_out_time,
           status: entry.status,
           created_at: entry.created_at,
+          is_edited: entry.notes?.startsWith('[Edited]'),
+          edit_reason: entry.notes?.startsWith('[Edited]') ? entry.notes.split(' - ')[1] : undefined,
         };
       });
 
@@ -210,7 +215,7 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
     try {
       let query = supabase
         .from('time_entries')
-        .select('id, employee_id, employee_name, check_in_time, check_out_time, total_hours, status, created_at')
+        .select('id, employee_id, employee_name, check_in_time, check_out_time, total_hours, status, created_at, notes')
         .eq('status', 'checked_out')
         .not('total_hours', 'is', null);
 
@@ -470,11 +475,11 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
                      <TableCell className="font-medium">
                        <div className="flex items-center gap-2">
                          {entry.employee_name}
-                         {entry.type === 'payout' && (entry as Payout).is_edited && (
+                         {entry.is_edited && (
                            <Badge 
                              variant="outline" 
                              className="text-xs cursor-help"
-                             title={(entry as Payout).edit_reason || 'Edited'}
+                             title={entry.edit_reason || 'Edited'}
                            >
                              (edited)
                            </Badge>
