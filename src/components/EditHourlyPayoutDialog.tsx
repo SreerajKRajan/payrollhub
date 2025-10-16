@@ -216,11 +216,11 @@ export function EditHourlyPayoutDialog({ data, open, onOpenChange, onSaved }: Ed
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Total Hours:</span>
-              <span className="font-medium">{totalHours} hrs</span>
+              <span className="font-medium">{totalHours.toFixed(2)} hrs</span>
             </div>
             <div className="flex justify-between text-base font-semibold pt-2 border-t border-border">
               <span>Total Amount:</span>
-              <span className="text-primary">${totalAmount}</span>
+              <span className="text-primary">${totalAmount.toFixed(2)}</span>
             </div>
           </div>
 
