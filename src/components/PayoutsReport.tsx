@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Pencil, TrendingUp, Trash2, Filter, CalendarIcon, X } from "lucide-react";
 import { EditPayoutDialog } from "./EditPayoutDialog";
+import { EditHourlyPayoutDialog } from "./EditHourlyPayoutDialog";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,10 @@ interface Payout {
   project_title: string | null;
   source: string;
   created_at: string;
+  clock_in_time?: string | null;
+  clock_out_time?: string | null;
+  edit_reason?: string | null;
+  is_edited?: boolean;
 }
 
 interface TimeEntry {
@@ -167,7 +172,7 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
       setLoading(true);
       let query = supabase
         .from('payouts')
-        .select('id, employee_id, employee_name, calculation_type, amount, rate, project_value, hours_worked, collaborators_count, project_title, source, created_at');
+        .select('id, employee_id, employee_name, calculation_type, amount, rate, project_value, hours_worked, collaborators_count, project_title, source, created_at, clock_in_time, clock_out_time, edit_reason, is_edited');
 
       // Filter data for non-admin users
       if (!isAdmin && currentUser) {
@@ -290,6 +295,10 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
         quoted_by_name: null,
         is_first_time: false,
         source: 'manual',
+        clock_in_time: entry.check_in_time,
+        clock_out_time: entry.check_out_time,
+        is_edited: false,
+        edit_reason: null,
       };
 
       const { error } = await supabase.from('payouts').insert([payoutData]);
@@ -488,7 +497,20 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
               <TableBody>
                 {filteredEntries.map((entry) => (
                   <TableRow key={`${entry.type}-${entry.id}`}>
-                    <TableCell className="font-medium">{entry.employee_name}</TableCell>
+                     <TableCell className="font-medium">
+                       <div className="flex items-center gap-2">
+                         {entry.employee_name}
+                         {entry.type === 'payout' && (entry as Payout).is_edited && (
+                           <Badge 
+                             variant="outline" 
+                             className="text-xs cursor-help"
+                             title={(entry as Payout).edit_reason || 'Edited'}
+                           >
+                             (edited)
+                           </Badge>
+                         )}
+                       </div>
+                     </TableCell>
                      <TableCell>
                        <Badge variant={entry.type === 'payout' 
                          ? (entry.source === 'auto' ? 'default' : 'secondary') 
@@ -560,7 +582,19 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
           </div>
         )}
 
-        {editing && (
+        {editing && editing.calculation_type === 'hourly' && (
+          <EditHourlyPayoutDialog
+            payout={editing}
+            open={!!editing}
+            onOpenChange={(open) => !open && setEditing(null)}
+            onSaved={() => {
+              setEditing(null);
+              fetchPayouts();
+            }}
+          />
+        )}
+        
+        {editing && editing.calculation_type === 'project' && (
           <EditPayoutDialog
             payout={editing}
             open={!!editing}

@@ -160,12 +160,16 @@ export type Database = {
           assigned_member_id: string | null
           assigned_member_name: string | null
           calculation_type: string
+          clock_in_time: string | null
+          clock_out_time: string | null
           collaborators_count: number | null
           created_at: string
+          edit_reason: string | null
           employee_id: string
           employee_name: string
           hours_worked: number | null
           id: string
+          is_edited: boolean | null
           is_first_time: boolean | null
           project_title: string | null
           project_value: number | null
@@ -180,12 +184,16 @@ export type Database = {
           assigned_member_id?: string | null
           assigned_member_name?: string | null
           calculation_type: string
+          clock_in_time?: string | null
+          clock_out_time?: string | null
           collaborators_count?: number | null
           created_at?: string
+          edit_reason?: string | null
           employee_id: string
           employee_name: string
           hours_worked?: number | null
           id?: string
+          is_edited?: boolean | null
           is_first_time?: boolean | null
           project_title?: string | null
           project_value?: number | null
@@ -200,12 +208,16 @@ export type Database = {
           assigned_member_id?: string | null
           assigned_member_name?: string | null
           calculation_type?: string
+          clock_in_time?: string | null
+          clock_out_time?: string | null
           collaborators_count?: number | null
           created_at?: string
+          edit_reason?: string | null
           employee_id?: string
           employee_name?: string
           hours_worked?: number | null
           id?: string
+          is_edited?: boolean | null
           is_first_time?: boolean | null
           project_title?: string | null
           project_value?: number | null
