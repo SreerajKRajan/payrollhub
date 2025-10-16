@@ -275,42 +275,60 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
     }
   };
 
-  const convertTimeEntryToPayoutAndEdit = async (entry: ReportEntry) => {
+  const openTimeEntryForEdit = async (entry: ReportEntry) => {
     if (!entry.employee_id || !entry.amount || !entry.rate) return;
     
     try {
-      const payoutData = {
-        employee_id: entry.employee_id,
-        employee_name: entry.employee_name,
-        calculation_type: 'hourly',
-        amount: entry.amount,
-        rate: entry.rate,
-        project_value: null,
-        hours_worked: entry.hours_worked,
-        collaborators_count: 1,
-        project_title: null,
-        assigned_member_id: null,
-        assigned_member_name: null,
-        quoted_by_id: null,
-        quoted_by_name: null,
-        is_first_time: false,
-        source: 'manual',
-        clock_in_time: entry.check_in_time,
-        clock_out_time: entry.check_out_time,
-        is_edited: false,
-        edit_reason: null,
-      };
-
-      const { data, error } = await supabase.from('payouts').insert([payoutData]).select().single();
-      if (error) throw error;
+      // Check if a payout already exists for this time entry
+      const { data: existingPayout, error: checkError } = await supabase
+        .from('payouts')
+        .select('*')
+        .eq('employee_id', entry.employee_id)
+        .eq('clock_in_time', entry.check_in_time)
+        .eq('clock_out_time', entry.check_out_time)
+        .single();
       
-      // Open the edit modal immediately
-      if (data) {
-        setEditing(data as Payout);
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
       }
-      fetchPayouts();
+
+      if (existingPayout) {
+        // Payout already exists, just open it for editing
+        setEditing(existingPayout as Payout);
+      } else {
+        // Create new payout record
+        const payoutData = {
+          employee_id: entry.employee_id,
+          employee_name: entry.employee_name,
+          calculation_type: 'hourly',
+          amount: entry.amount,
+          rate: entry.rate,
+          project_value: null,
+          hours_worked: entry.hours_worked,
+          collaborators_count: 1,
+          project_title: null,
+          assigned_member_id: null,
+          assigned_member_name: null,
+          quoted_by_id: null,
+          quoted_by_name: null,
+          is_first_time: false,
+          source: 'manual',
+          clock_in_time: entry.check_in_time,
+          clock_out_time: entry.check_out_time,
+          is_edited: false,
+          edit_reason: null,
+        };
+
+        const { data, error } = await supabase.from('payouts').insert([payoutData]).select().single();
+        if (error) throw error;
+        
+        if (data) {
+          setEditing(data as Payout);
+        }
+        fetchPayouts();
+      }
     } catch (err) {
-      console.error('Failed to convert time entry', err);
+      console.error('Failed to open edit dialog', err);
       toast({ 
         title: 'Error', 
         description: 'Failed to open edit dialog', 
@@ -560,7 +578,7 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
                         )}
                         {entry.type === 'time_entry' && isAdmin && (
                           <>
-                            <Button variant="ghost" size="icon" onClick={() => convertTimeEntryToPayoutAndEdit(entry)}>
+                            <Button variant="ghost" size="icon" onClick={() => openTimeEntryForEdit(entry)}>
                               <Pencil className="h-4 w-4" />
                             </Button>
                             <Button variant="ghost" size="icon" onClick={() => deleteTimeEntry(entry.id)}>
