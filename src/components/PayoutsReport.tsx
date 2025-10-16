@@ -275,7 +275,7 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
     }
   };
 
-  const convertTimeEntryToPayout = async (entry: ReportEntry) => {
+  const convertTimeEntryToPayoutAndEdit = async (entry: ReportEntry) => {
     if (!entry.employee_id || !entry.amount || !entry.rate) return;
     
     try {
@@ -301,19 +301,19 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
         edit_reason: null,
       };
 
-      const { error } = await supabase.from('payouts').insert([payoutData]);
+      const { data, error } = await supabase.from('payouts').insert([payoutData]).select().single();
       if (error) throw error;
       
-      toast({ 
-        title: 'Converted', 
-        description: 'Time entry converted to editable payout record' 
-      });
+      // Open the edit modal immediately
+      if (data) {
+        setEditing(data as Payout);
+      }
       fetchPayouts();
     } catch (err) {
       console.error('Failed to convert time entry', err);
       toast({ 
         title: 'Error', 
-        description: 'Failed to convert time entry', 
+        description: 'Failed to open edit dialog', 
         variant: 'destructive' 
       });
     }
@@ -560,7 +560,7 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
                         )}
                         {entry.type === 'time_entry' && isAdmin && (
                           <>
-                            <Button variant="ghost" size="icon" onClick={() => convertTimeEntryToPayout(entry)}>
+                            <Button variant="ghost" size="icon" onClick={() => convertTimeEntryToPayoutAndEdit(entry)}>
                               <Pencil className="h-4 w-4" />
                             </Button>
                             <Button variant="ghost" size="icon" onClick={() => deleteTimeEntry(entry.id)}>
