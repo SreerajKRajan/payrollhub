@@ -47,12 +47,13 @@ interface EditHourlyPayoutDialogProps {
 export function EditHourlyPayoutDialog({ data, open, onOpenChange, onSaved }: EditHourlyPayoutDialogProps) {
   const [clockInTime, setClockInTime] = useState("");
   const [clockOutTime, setClockOutTime] = useState("");
+  const [rate, setRate] = useState(0);
+  const [collaboratorsCount, setCollaboratorsCount] = useState(1);
   const [editReason, setEditReason] = useState("");
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
   const isTimeEntry = 'isTimeEntry' in data && data.isTimeEntry;
-  const rate = 'rate' in data ? data.rate : 0;
 
   // Helper to convert UTC date to local datetime-local format (with seconds)
   const toLocalDateTimeString = (dateString: string) => {
@@ -85,6 +86,8 @@ export function EditHourlyPayoutDialog({ data, open, onOpenChange, onSaved }: Ed
       const timeEntry = data as TimeEntryData;
       setClockInTime(toLocalDateTimeString(timeEntry.check_in_time));
       setClockOutTime(toLocalDateTimeString(timeEntry.check_out_time));
+      setRate(timeEntry.rate);
+      setCollaboratorsCount(1);
       
       // Extract edit reason from notes field (format: "[Edited] timestamp - reason")
       if (timeEntry.notes && timeEntry.notes.startsWith('[Edited]')) {
@@ -101,6 +104,8 @@ export function EditHourlyPayoutDialog({ data, open, onOpenChange, onSaved }: Ed
       if (payout.clock_out_time) {
         setClockOutTime(toLocalDateTimeString(payout.clock_out_time));
       }
+      setRate(payout.rate);
+      setCollaboratorsCount(payout.collaborators_count || 1);
       setEditReason(payout.edit_reason || "");
     }
   }, [data, isTimeEntry]);
@@ -160,6 +165,8 @@ export function EditHourlyPayoutDialog({ data, open, onOpenChange, onSaved }: Ed
             clock_out_time: new Date(clockOutTime).toISOString(),
             hours_worked: totalHours,
             amount: totalAmount,
+            rate: rate,
+            collaborators_count: collaboratorsCount,
             edit_reason: editReason.trim(),
             is_edited: true,
           })
@@ -217,11 +224,34 @@ export function EditHourlyPayoutDialog({ data, open, onOpenChange, onSaved }: Ed
             />
           </div>
 
-          <div className="space-y-2 p-4 bg-muted/50 rounded-lg">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Hourly Rate:</span>
-              <span className="font-medium">${rate.toFixed(2)}/hr</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="rate">Rate ($/hr) *</Label>
+              <Input
+                id="rate"
+                type="number"
+                step="0.01"
+                value={rate}
+                onChange={(e) => setRate(Number(e.target.value))}
+                aria-label="Hourly rate in dollars"
+              />
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="collaborators">Collaborators Count</Label>
+              <Input
+                id="collaborators"
+                type="number"
+                step="1"
+                min="1"
+                value={collaboratorsCount}
+                onChange={(e) => setCollaboratorsCount(Number(e.target.value))}
+                aria-label="Number of collaborators"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2 p-4 bg-muted/50 rounded-lg">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Total Hours:</span>
               <span className="font-medium">{totalHours.toFixed(2)} hrs</span>
