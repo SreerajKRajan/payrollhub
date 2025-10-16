@@ -26,19 +26,32 @@ interface Payout {
   is_edited?: boolean;
 }
 
+interface TimeEntryData {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  check_in_time: string;
+  check_out_time: string;
+  rate: number;
+  isTimeEntry: true;
+}
+
 interface EditHourlyPayoutDialogProps {
-  payout: Payout;
+  data: Payout | TimeEntryData;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
 }
 
-export function EditHourlyPayoutDialog({ payout, open, onOpenChange, onSaved }: EditHourlyPayoutDialogProps) {
+export function EditHourlyPayoutDialog({ data, open, onOpenChange, onSaved }: EditHourlyPayoutDialogProps) {
   const [clockInTime, setClockInTime] = useState("");
   const [clockOutTime, setClockOutTime] = useState("");
   const [editReason, setEditReason] = useState("");
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+
+  const isTimeEntry = 'isTimeEntry' in data && data.isTimeEntry;
+  const rate = 'rate' in data ? data.rate : 0;
 
   // Calculate total hours
   const calculateHours = () => {
@@ -51,18 +64,26 @@ export function EditHourlyPayoutDialog({ payout, open, onOpenChange, onSaved }: 
   };
 
   const totalHours = calculateHours();
-  const totalAmount = totalHours * payout.rate;
+  const totalAmount = totalHours * rate;
 
   useEffect(() => {
     // Initialize form with existing values
-    if (payout.clock_in_time) {
-      setClockInTime(new Date(payout.clock_in_time).toISOString().slice(0, 16));
+    if (isTimeEntry) {
+      const timeEntry = data as TimeEntryData;
+      setClockInTime(new Date(timeEntry.check_in_time).toISOString().slice(0, 16));
+      setClockOutTime(new Date(timeEntry.check_out_time).toISOString().slice(0, 16));
+      setEditReason("");
+    } else {
+      const payout = data as Payout;
+      if (payout.clock_in_time) {
+        setClockInTime(new Date(payout.clock_in_time).toISOString().slice(0, 16));
+      }
+      if (payout.clock_out_time) {
+        setClockOutTime(new Date(payout.clock_out_time).toISOString().slice(0, 16));
+      }
+      setEditReason(payout.edit_reason || "");
     }
-    if (payout.clock_out_time) {
-      setClockOutTime(new Date(payout.clock_out_time).toISOString().slice(0, 16));
-    }
-    setEditReason(payout.edit_reason || "");
-  }, [payout]);
+  }, [data, isTimeEntry]);
 
   const handleSave = async () => {
     if (!clockInTime || !clockOutTime) {
@@ -94,19 +115,46 @@ export function EditHourlyPayoutDialog({ payout, open, onOpenChange, onSaved }: 
 
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("payouts")
-        .update({
-          clock_in_time: new Date(clockInTime).toISOString(),
-          clock_out_time: new Date(clockOutTime).toISOString(),
-          hours_worked: totalHours,
-          amount: totalAmount,
-          edit_reason: editReason.trim(),
-          is_edited: true,
-        })
-        .eq("id", payout.id);
+      if (isTimeEntry) {
+        // For time entries, create a new payout record
+        const timeEntry = data as TimeEntryData;
+        const { error } = await supabase
+          .from("payouts")
+          .insert({
+            employee_id: timeEntry.employee_id,
+            employee_name: timeEntry.employee_name,
+            calculation_type: 'hourly',
+            amount: totalAmount,
+            rate: rate,
+            project_value: null,
+            hours_worked: totalHours,
+            collaborators_count: 1,
+            project_title: null,
+            source: 'manual',
+            clock_in_time: new Date(clockInTime).toISOString(),
+            clock_out_time: new Date(clockOutTime).toISOString(),
+            edit_reason: editReason.trim(),
+            is_edited: true,
+          });
 
-      if (error) throw error;
+        if (error) throw error;
+      } else {
+        // For existing payouts, update the record
+        const payout = data as Payout;
+        const { error } = await supabase
+          .from("payouts")
+          .update({
+            clock_in_time: new Date(clockInTime).toISOString(),
+            clock_out_time: new Date(clockOutTime).toISOString(),
+            hours_worked: totalHours,
+            amount: totalAmount,
+            edit_reason: editReason.trim(),
+            is_edited: true,
+          })
+          .eq("id", payout.id);
+
+        if (error) throw error;
+      }
 
       toast({
         title: "Success",
@@ -116,10 +164,10 @@ export function EditHourlyPayoutDialog({ payout, open, onOpenChange, onSaved }: 
       onSaved();
       onOpenChange(false);
     } catch (error) {
-      console.error("Error updating payout:", error);
+      console.error("Error saving payout:", error);
       toast({
         title: "Error",
-        description: "Failed to update payout record",
+        description: "Failed to save payout record",
         variant: "destructive",
       });
     } finally {
@@ -131,7 +179,7 @@ export function EditHourlyPayoutDialog({ payout, open, onOpenChange, onSaved }: 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Edit Hourly Payout - {payout.employee_name}</DialogTitle>
+          <DialogTitle>Edit Hourly Payout - {data.employee_name}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -158,7 +206,7 @@ export function EditHourlyPayoutDialog({ payout, open, onOpenChange, onSaved }: 
           <div className="space-y-2 p-4 bg-muted/50 rounded-lg">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Hourly Rate:</span>
-              <span className="font-medium">${payout.rate.toFixed(2)}/hr</span>
+              <span className="font-medium">${rate.toFixed(2)}/hr</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Total Hours:</span>

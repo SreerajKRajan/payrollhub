@@ -275,66 +275,18 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
     }
   };
 
-  const openTimeEntryForEdit = async (entry: ReportEntry) => {
-    if (!entry.employee_id || !entry.amount || !entry.rate) return;
-    
-    try {
-      // Check if a payout already exists for this time entry
-      const { data: existingPayout, error: checkError } = await supabase
-        .from('payouts')
-        .select('*')
-        .eq('employee_id', entry.employee_id)
-        .eq('clock_in_time', entry.check_in_time)
-        .eq('clock_out_time', entry.check_out_time)
-        .single();
-      
-      if (checkError && checkError.code !== 'PGRST116') {
-        throw checkError;
-      }
-
-      if (existingPayout) {
-        // Payout already exists, just open it for editing
-        setEditing(existingPayout as Payout);
-      } else {
-        // Create new payout record
-        const payoutData = {
-          employee_id: entry.employee_id,
-          employee_name: entry.employee_name,
-          calculation_type: 'hourly',
-          amount: entry.amount,
-          rate: entry.rate,
-          project_value: null,
-          hours_worked: entry.hours_worked,
-          collaborators_count: 1,
-          project_title: null,
-          assigned_member_id: null,
-          assigned_member_name: null,
-          quoted_by_id: null,
-          quoted_by_name: null,
-          is_first_time: false,
-          source: 'manual',
-          clock_in_time: entry.check_in_time,
-          clock_out_time: entry.check_out_time,
-          is_edited: false,
-          edit_reason: null,
-        };
-
-        const { data, error } = await supabase.from('payouts').insert([payoutData]).select().single();
-        if (error) throw error;
-        
-        if (data) {
-          setEditing(data as Payout);
-        }
-        fetchPayouts();
-      }
-    } catch (err) {
-      console.error('Failed to open edit dialog', err);
-      toast({ 
-        title: 'Error', 
-        description: 'Failed to open edit dialog', 
-        variant: 'destructive' 
-      });
-    }
+  const openTimeEntryForEdit = (entry: ReportEntry) => {
+    // Pass time entry data directly to the modal - no payout creation yet
+    const timeEntryData = {
+      id: entry.id,
+      employee_id: entry.employee_id,
+      employee_name: entry.employee_name,
+      check_in_time: entry.check_in_time!,
+      check_out_time: entry.check_out_time!,
+      rate: entry.rate,
+      isTimeEntry: true as const,
+    };
+    setEditing(timeEntryData as any);
   };
 
   return (
@@ -600,14 +552,15 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
           </div>
         )}
 
-        {editing && editing.calculation_type === 'hourly' && (
+        {editing && (editing.calculation_type === 'hourly' || ('isTimeEntry' in editing && editing.isTimeEntry)) && (
           <EditHourlyPayoutDialog
-            payout={editing}
+            data={editing as any}
             open={!!editing}
             onOpenChange={(open) => !open && setEditing(null)}
             onSaved={() => {
               setEditing(null);
               fetchPayouts();
+              fetchTimeEntries();
             }}
           />
         )}
