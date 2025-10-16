@@ -82,13 +82,18 @@ export function EditHourlyPayoutDialog({ data, open, onOpenChange, onSaved }: Ed
   // Helper to extract edit reason from notes
   const extractEditReason = (notes?: string | null) => {
     if (!notes) return "";
-    // Pattern: "[Edited] <timestamp> - <reason>" (robust to extra content/newlines)
-    const match = notes.match(/\[Edited\][^-]*-\s*(.+)/s);
-    if (match?.[1]) return match[1].trim();
-    // Fallbacks for other potential formats
-    const match2 = notes.match(/Edited:\s*(.+)/i);
+    const trimmed = notes.trim();
+    // Expected format: "[Edited] <ISO timestamp> - <reason>"
+    if (trimmed.startsWith("[Edited]")) {
+      const sep = trimmed.indexOf(" - ");
+      if (sep !== -1) {
+        return trimmed.slice(sep + 3).trim();
+      }
+    }
+    // Other potential formats like "Edited: <reason>"
+    const match2 = trimmed.match(/Edited:\s*(.+)/i);
     if (match2?.[1]) return match2[1].trim();
-    return notes.trim();
+    return trimmed;
   };
 
   const totalHours = calculateHours();
