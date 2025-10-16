@@ -77,6 +77,18 @@ export function EditHourlyPayoutDialog({ data, open, onOpenChange, onSaved }: Ed
     return hours > 0 ? hours : 0;
   };
 
+  // Helper to extract edit reason from notes
+  const extractEditReason = (notes?: string | null) => {
+    if (!notes) return "";
+    // Pattern: "[Edited] <timestamp> - <reason>" (robust to extra content/newlines)
+    const match = notes.match(/\[Edited\][^-]*-\s*(.+)/s);
+    if (match?.[1]) return match[1].trim();
+    // Fallbacks for other potential formats
+    const match2 = notes.match(/Edited:\s*(.+)/i);
+    if (match2?.[1]) return match2[1].trim();
+    return notes.trim();
+  };
+
   const totalHours = calculateHours();
   const totalAmount = totalHours * rate;
 
@@ -89,13 +101,8 @@ export function EditHourlyPayoutDialog({ data, open, onOpenChange, onSaved }: Ed
       setRate(timeEntry.rate);
       setCollaboratorsCount(1);
       
-      // Extract edit reason from notes field (format: "[Edited] timestamp - reason")
-      if (timeEntry.notes && timeEntry.notes.startsWith('[Edited]')) {
-        const reasonMatch = timeEntry.notes.match(/\[Edited\].*? - (.+)/);
-        setEditReason(reasonMatch ? reasonMatch[1] : "");
-      } else {
-        setEditReason("");
-      }
+      // Extract edit reason from notes field robustly
+      setEditReason(extractEditReason(timeEntry.notes));
     } else {
       const payout = data as Payout;
       if (payout.clock_in_time) {
