@@ -116,26 +116,18 @@ export function EditHourlyPayoutDialog({ data, open, onOpenChange, onSaved }: Ed
     setSaving(true);
     try {
       if (isTimeEntry) {
-        // For time entries, create a new payout record
+        // For time entries, update the existing time_entries record (no new payout)
         const timeEntry = data as TimeEntryData;
         const { error } = await supabase
-          .from("payouts")
-          .insert({
-            employee_id: timeEntry.employee_id,
-            employee_name: timeEntry.employee_name,
-            calculation_type: 'hourly',
-            amount: totalAmount,
-            rate: rate,
-            project_value: null,
-            hours_worked: totalHours,
-            collaborators_count: 1,
-            project_title: null,
-            source: 'manual',
-            clock_in_time: new Date(clockInTime).toISOString(),
-            clock_out_time: new Date(clockOutTime).toISOString(),
-            edit_reason: editReason.trim(),
-            is_edited: true,
-          });
+          .from("time_entries")
+          .update({
+            check_in_time: new Date(clockInTime).toISOString(),
+            check_out_time: new Date(clockOutTime).toISOString(),
+            total_hours: totalHours,
+            // Store the reason in notes for audit (without schema changes)
+            notes: `[Edited] ${new Date().toISOString()} - ${editReason.trim()}`,
+          })
+          .eq("id", timeEntry.id);
 
         if (error) throw error;
       } else {

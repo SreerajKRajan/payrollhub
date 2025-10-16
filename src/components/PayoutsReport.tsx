@@ -552,7 +552,7 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
           </div>
         )}
 
-        {editing && (editing.calculation_type === 'hourly' || ('isTimeEntry' in editing && editing.isTimeEntry)) && (
+        {editing && (editing.calculation_type === 'hourly' || ((editing as any)?.isTimeEntry)) && (
           <EditHourlyPayoutDialog
             data={editing as any}
             open={!!editing}
