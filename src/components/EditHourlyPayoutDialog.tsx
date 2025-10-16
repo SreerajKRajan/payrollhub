@@ -33,6 +33,7 @@ interface TimeEntryData {
   check_in_time: string;
   check_out_time: string;
   rate: number;
+  notes?: string | null;
   isTimeEntry: true;
 }
 
@@ -84,7 +85,14 @@ export function EditHourlyPayoutDialog({ data, open, onOpenChange, onSaved }: Ed
       const timeEntry = data as TimeEntryData;
       setClockInTime(toLocalDateTimeString(timeEntry.check_in_time));
       setClockOutTime(toLocalDateTimeString(timeEntry.check_out_time));
-      setEditReason("");
+      
+      // Extract edit reason from notes field (format: "[Edited] timestamp - reason")
+      if (timeEntry.notes && timeEntry.notes.startsWith('[Edited]')) {
+        const reasonMatch = timeEntry.notes.match(/\[Edited\].*? - (.+)/);
+        setEditReason(reasonMatch ? reasonMatch[1] : "");
+      } else {
+        setEditReason("");
+      }
     } else {
       const payout = data as Payout;
       if (payout.clock_in_time) {
