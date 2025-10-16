@@ -55,6 +55,8 @@ export function EditHourlyPayoutDialog({ data, open, onOpenChange, onSaved }: Ed
 
   const isTimeEntry = 'isTimeEntry' in data && data.isTimeEntry;
 
+  console.log(data, 'dataaaa')
+
   // Helper to convert UTC date to local datetime-local format (with seconds)
   const toLocalDateTimeString = (dateString: string) => {
     const date = new Date(dateString);
