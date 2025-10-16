@@ -53,7 +53,7 @@ export function EditHourlyPayoutDialog({ data, open, onOpenChange, onSaved }: Ed
   const isTimeEntry = 'isTimeEntry' in data && data.isTimeEntry;
   const rate = 'rate' in data ? data.rate : 0;
 
-  // Helper to convert UTC date to local datetime-local format
+  // Helper to convert UTC date to local datetime-local format (with seconds)
   const toLocalDateTimeString = (dateString: string) => {
     const date = new Date(dateString);
     const year = date.getFullYear();
@@ -61,7 +61,8 @@ export function EditHourlyPayoutDialog({ data, open, onOpenChange, onSaved }: Ed
     const day = String(date.getDate()).padStart(2, '0');
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
   };
 
   // Calculate total hours
@@ -191,6 +192,7 @@ export function EditHourlyPayoutDialog({ data, open, onOpenChange, onSaved }: Ed
             <Input
               id="clockIn"
               type="datetime-local"
+              step="1"
               value={clockInTime}
               onChange={(e) => setClockInTime(e.target.value)}
             />
@@ -201,6 +203,7 @@ export function EditHourlyPayoutDialog({ data, open, onOpenChange, onSaved }: Ed
             <Input
               id="clockOut"
               type="datetime-local"
+              step="1"
               value={clockOutTime}
               onChange={(e) => setClockOutTime(e.target.value)}
             />
