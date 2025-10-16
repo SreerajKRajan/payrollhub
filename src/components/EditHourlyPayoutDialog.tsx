@@ -53,6 +53,17 @@ export function EditHourlyPayoutDialog({ data, open, onOpenChange, onSaved }: Ed
   const isTimeEntry = 'isTimeEntry' in data && data.isTimeEntry;
   const rate = 'rate' in data ? data.rate : 0;
 
+  // Helper to convert UTC date to local datetime-local format
+  const toLocalDateTimeString = (dateString: string) => {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
   // Calculate total hours
   const calculateHours = () => {
     if (!clockInTime || !clockOutTime) return 0;
@@ -70,16 +81,16 @@ export function EditHourlyPayoutDialog({ data, open, onOpenChange, onSaved }: Ed
     // Initialize form with existing values
     if (isTimeEntry) {
       const timeEntry = data as TimeEntryData;
-      setClockInTime(new Date(timeEntry.check_in_time).toISOString().slice(0, 16));
-      setClockOutTime(new Date(timeEntry.check_out_time).toISOString().slice(0, 16));
+      setClockInTime(toLocalDateTimeString(timeEntry.check_in_time));
+      setClockOutTime(toLocalDateTimeString(timeEntry.check_out_time));
       setEditReason("");
     } else {
       const payout = data as Payout;
       if (payout.clock_in_time) {
-        setClockInTime(new Date(payout.clock_in_time).toISOString().slice(0, 16));
+        setClockInTime(toLocalDateTimeString(payout.clock_in_time));
       }
       if (payout.clock_out_time) {
-        setClockOutTime(new Date(payout.clock_out_time).toISOString().slice(0, 16));
+        setClockOutTime(toLocalDateTimeString(payout.clock_out_time));
       }
       setEditReason(payout.edit_reason || "");
     }
@@ -202,11 +213,11 @@ export function EditHourlyPayoutDialog({ data, open, onOpenChange, onSaved }: Ed
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Total Hours:</span>
-              <span className="font-medium">{totalHours.toFixed(2)} hrs</span>
+              <span className="font-medium">{totalHours} hrs</span>
             </div>
             <div className="flex justify-between text-base font-semibold pt-2 border-t border-border">
               <span>Total Amount:</span>
-              <span className="text-primary">${totalAmount.toFixed(2)}</span>
+              <span className="text-primary">${totalAmount}</span>
             </div>
           </div>
 
