@@ -66,6 +66,7 @@ interface ReportEntry {
   created_at: string;
   is_edited?: boolean;
   edit_reason?: string | null;
+  notes?: string | null;
 }
 
 export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { refreshToken?: number | string; isAdmin?: boolean; currentUser?: { id: string; name: string; email: string } | null }) {
@@ -121,6 +122,7 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
           created_at: entry.created_at,
           is_edited: entry.notes?.startsWith('[Edited]'),
           edit_reason: entry.notes?.startsWith('[Edited]') ? entry.notes.split(' - ')[1] : undefined,
+          notes: entry.notes,
         };
       });
 
@@ -289,6 +291,7 @@ export function PayoutsReport({ refreshToken, isAdmin = true, currentUser }: { r
       check_in_time: entry.check_in_time!,
       check_out_time: entry.check_out_time!,
       rate: entry.rate,
+      notes: entry.notes,
       isTimeEntry: true as const,
     };
     setEditing(timeEntryData as any);
