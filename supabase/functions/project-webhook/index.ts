@@ -218,6 +218,35 @@ serve(async (req) => {
       });
     }
 
+    // Check for existing payouts for this project to prevent duplicates
+    const employeeIds = employees.map(emp => emp.id);
+    const { data: existingPayouts, error: checkError } = await supabase
+      .from('payouts')
+      .select('id, employee_id, employee_name')
+      .eq('project_title', payload.project_title)
+      .eq('source', 'auto')
+      .in('employee_id', employeeIds);
+
+    if (checkError) {
+      console.error('Error checking for existing payouts:', checkError);
+      return new Response(JSON.stringify({ error: 'Failed to check for duplicates' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (existingPayouts && existingPayouts.length > 0) {
+      console.log('Duplicate payouts detected. Existing payouts:', existingPayouts);
+      return new Response(JSON.stringify({ 
+        error: 'Duplicate payouts', 
+        message: `Payouts for project "${payload.project_title}" already exist for these employees`,
+        existing_payouts: existingPayouts 
+      }), {
+        status: 409,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Insert payouts
     const { data: insertedPayouts, error: payoutsError } = await supabase
       .from('payouts')
