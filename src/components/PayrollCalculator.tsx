@@ -57,6 +57,7 @@ export function PayrollCalculator({ onRecorded, isAdmin = true }: { onRecorded?:
   const [isFirstTime, setIsFirstTime] = useState(false);
   const [payoutResults, setPayoutResults] = useState<PayoutResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [calculating, setCalculating] = useState(false);
   const [useTrackedHours, setUseTrackedHours] = useState(false);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [selectedTimeEntries, setSelectedTimeEntries] = useState<string[]>([]);
@@ -153,6 +154,8 @@ export function PayrollCalculator({ onRecorded, isAdmin = true }: { onRecorded?:
   };
 
   const calculatePayouts = async () => {
+    if (calculating) return; // Prevent double submission
+    
     if (selectedEmployees.length === 0) {
       toast({
         title: "Error",
@@ -161,6 +164,8 @@ export function PayrollCalculator({ onRecorded, isAdmin = true }: { onRecorded?:
       });
       return;
     }
+
+    setCalculating(true);
 
     const results: PayoutResult[] = [];
     const collaborationCount = selectedEmployees.length;
@@ -284,6 +289,8 @@ export function PayrollCalculator({ onRecorded, isAdmin = true }: { onRecorded?:
         description: "Payouts calculated but failed to save records",
         variant: "destructive",
       });
+    } finally {
+      setCalculating(false);
     }
   };
 
@@ -624,10 +631,10 @@ export function PayrollCalculator({ onRecorded, isAdmin = true }: { onRecorded?:
               variant="gradient" 
               size="lg" 
               className="w-full"
-              disabled={selectedEmployees.length === 0 || (calculationType === 'project' ? !projectValue : useTrackedHours ? selectedTimeEntries.length === 0 : (!startTime || !endTime))}
+              disabled={calculating || selectedEmployees.length === 0 || (calculationType === 'project' ? !projectValue : useTrackedHours ? selectedTimeEntries.length === 0 : (!startTime || !endTime))}
             >
               <Calculator className="h-5 w-5 mr-2" />
-              Calculate Payouts
+              {calculating ? 'Calculating...' : 'Calculate Payouts'}
             </Button>
           )}
         </CardContent>
