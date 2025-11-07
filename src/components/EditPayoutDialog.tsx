@@ -49,7 +49,7 @@ export function EditPayoutDialog({ payout, open, onOpenChange, onSaved }: EditPa
   }, [payout]);
 
 
-  // Recalculate amount based on rate, project value, and collaborators
+  // Recalculate amount based on last edited field
   useEffect(() => {
     if (payout.calculation_type !== 'project') return;
     if (!lastEdited || lastEdited === 'amount') return; // Don't recalculate if user is editing amount directly
@@ -68,27 +68,6 @@ export function EditPayoutDialog({ payout, open, onOpenChange, onSaved }: EditPa
     setForm(prev => ({ ...prev, amount: perCollaborator.toFixed(2) }));
     setLastEdited(null);
   }, [form.project_value, form.rate, form.collaborators_count, payout.calculation_type, lastEdited]);
-
-  // Recalculate rate when amount is manually edited
-  useEffect(() => {
-    if (payout.calculation_type !== 'project') return;
-    if (lastEdited !== 'amount') return; // Only recalculate if user edited amount
-
-    const amount = parseFloat(form.amount);
-    const projectValue = parseFloat(form.project_value);
-    const collabCount = parseInt(form.collaborators_count) || 1;
-
-    if (isNaN(amount) || amount <= 0 || isNaN(projectValue) || projectValue <= 0) {
-      setLastEdited(null);
-      return;
-    }
-
-    // Calculate rate from: amount = (project_value * rate / 100) / collaborators
-    // So: rate = (amount * collaborators / project_value) * 100
-    const calculatedRate = (amount * collabCount / projectValue) * 100;
-    setForm(prev => ({ ...prev, rate: calculatedRate.toFixed(2) }));
-    setLastEdited(null);
-  }, [form.amount, form.project_value, form.collaborators_count, payout.calculation_type, lastEdited]);
 
   const handleChange = (key: keyof typeof form, value: string) => {
     setLastEdited(key as FormKey);
