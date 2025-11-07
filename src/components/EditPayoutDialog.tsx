@@ -56,14 +56,13 @@ export function EditPayoutDialog({ payout, open, onOpenChange, onSaved }: EditPa
 
     const projectValue = parseFloat(form.project_value);
     const rate = parseFloat(form.rate);
-    const collabCount = parseInt(form.collaborators_count) || 1;
 
     if (isNaN(projectValue) || projectValue <= 0 || isNaN(rate) || rate <= 0) {
       setLastEdited(null);
       return;
     }
 
-    const amount = (projectValue * rate) / 100 / Math.max(collabCount, 1);
+    const amount = (projectValue * rate) / 100;
     setForm(prev => ({ ...prev, amount: amount.toFixed(2) }));
     setLastEdited(null);
   }, [form.project_value, form.rate, form.collaborators_count, payout.calculation_type, lastEdited]);
