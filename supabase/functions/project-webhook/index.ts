@@ -121,7 +121,7 @@ serve(async (req) => {
         continue;
       }
 
-      const baseAmount = (payload.project_value * rate) / 100 / collaboratorsCount;
+      const baseAmount = (payload.project_value * rate) / 100;
       
       // Regular payout
       const regularPayout = {

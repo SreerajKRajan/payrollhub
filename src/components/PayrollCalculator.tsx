@@ -205,7 +205,7 @@ export function PayrollCalculator({ onRecorded, isAdmin = true }: { onRecorded?:
             rate = employee.project_rate_5_members || 0;
         }
         
-        amount = (projectVal * rate) / 100 / collaborationCount;
+        amount = (projectVal * rate) / 100;
       }
 
       results.push({
