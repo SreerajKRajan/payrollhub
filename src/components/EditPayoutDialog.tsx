@@ -52,7 +52,7 @@ export function EditPayoutDialog({ payout, open, onOpenChange, onSaved }: EditPa
   // Recalculate amount based on last edited field
   useEffect(() => {
     if (payout.calculation_type !== 'project') return;
-    if (!lastEdited) return; // Only recalculate if user has edited a field
+    if (!lastEdited || lastEdited === 'amount') return; // Don't recalculate if user is editing amount directly
 
     const projectValue = parseFloat(form.project_value);
     const rate = parseFloat(form.rate);
