@@ -63,7 +63,7 @@ export function EditPayoutDialog({ payout, open, onOpenChange, onSaved }: EditPa
       return;
     }
 
-    const amount = (projectValue * rate) / 100;
+    const amount = (projectValue * rate) / 100 / Math.max(collabCount, 1);
     setForm(prev => ({ ...prev, amount: amount.toFixed(2) }));
     setLastEdited(null);
   }, [form.project_value, form.rate, form.collaborators_count, payout.calculation_type, lastEdited]);
