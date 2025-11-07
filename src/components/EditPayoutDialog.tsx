@@ -36,10 +36,19 @@ export function EditPayoutDialog({ payout, open, onOpenChange, onSaved }: EditPa
   const [lastEdited, setLastEdited] = useState<FormKey | null>(null);
   const { toast } = useToast();
 
-  // Reset form when payout changes
+  // Reset form when payout changes and recalculate amount per technician
   useEffect(() => {
+    // For project-based payouts, ensure amount is per technician
+    let calculatedAmount = payout.amount?.toString() ?? '';
+    
+    if (payout.calculation_type === 'project' && payout.project_value && payout.rate && payout.collaborators_count) {
+      const total = (payout.project_value * payout.rate) / 100;
+      const perCollaborator = total / Math.max(payout.collaborators_count, 1);
+      calculatedAmount = perCollaborator.toFixed(2);
+    }
+    
     setForm({
-      amount: payout.amount?.toString() ?? '',
+      amount: calculatedAmount,
       rate: payout.rate?.toString() ?? '',
       project_value: payout.project_value?.toString() ?? '',
       hours_worked: payout.hours_worked?.toString() ?? '',
