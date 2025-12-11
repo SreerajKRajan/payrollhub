@@ -171,6 +171,7 @@ export type Database = {
           id: string
           is_edited: boolean | null
           is_first_time: boolean | null
+          job_id: string | null
           project_title: string | null
           project_value: number | null
           quoted_by_id: string | null
@@ -195,6 +196,7 @@ export type Database = {
           id?: string
           is_edited?: boolean | null
           is_first_time?: boolean | null
+          job_id?: string | null
           project_title?: string | null
           project_value?: number | null
           quoted_by_id?: string | null
@@ -219,6 +221,7 @@ export type Database = {
           id?: string
           is_edited?: boolean | null
           is_first_time?: boolean | null
+          job_id?: string | null
           project_title?: string | null
           project_value?: number | null
           quoted_by_id?: string | null
