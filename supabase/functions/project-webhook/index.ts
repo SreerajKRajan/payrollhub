@@ -12,6 +12,7 @@ interface WebhookPayload {
   quoted_by_name: string;
   first_time: boolean;
   employees_assigned: string[]; // Array of employee names
+  job_id?: string; // Optional unique job identifier from external system
 }
 
 serve(async (req) => {
@@ -137,6 +138,7 @@ serve(async (req) => {
         quoted_by_name: quotedByEmployee?.name || payload.quoted_by_name || null,
         is_first_time: false,
         source: 'auto',
+        job_id: payload.job_id || null,
       };
 
       payouts.push(regularPayout);
@@ -174,6 +176,7 @@ serve(async (req) => {
         quoted_by_name: quotedByEmployee.name,
         is_first_time: true,
         source: 'auto',
+        job_id: payload.job_id || null,
       });
     }
     
@@ -208,6 +211,7 @@ serve(async (req) => {
         quoted_by_name: quotedByEmployee.name,
         is_first_time: false,
         source: 'auto',
+        job_id: payload.job_id || null,
       });
     }
 
@@ -218,33 +222,41 @@ serve(async (req) => {
       });
     }
 
-    // Check for existing payouts for this project to prevent duplicates
+    // Check for existing payouts to prevent duplicates
+    // Only check if job_id is provided - use job_id for exact duplicate detection
     const employeeIds = employees.map(emp => emp.id);
-    const { data: existingPayouts, error: checkError } = await supabase
-      .from('payouts')
-      .select('id, employee_id, employee_name')
-      .eq('project_title', payload.project_title)
-      .eq('source', 'auto')
-      .in('employee_id', employeeIds);
+    
+    if (payload.job_id) {
+      console.log('Checking for duplicates using job_id:', payload.job_id);
+      
+      const { data: existingPayouts, error: checkError } = await supabase
+        .from('payouts')
+        .select('id, employee_id, employee_name, job_id')
+        .eq('job_id', payload.job_id)
+        .eq('source', 'auto')
+        .in('employee_id', employeeIds);
 
-    if (checkError) {
-      console.error('Error checking for existing payouts:', checkError);
-      return new Response(JSON.stringify({ error: 'Failed to check for duplicates' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+      if (checkError) {
+        console.error('Error checking for existing payouts:', checkError);
+        return new Response(JSON.stringify({ error: 'Failed to check for duplicates' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
 
-    if (existingPayouts && existingPayouts.length > 0) {
-      console.log('Duplicate payouts detected. Existing payouts:', existingPayouts);
-      return new Response(JSON.stringify({ 
-        error: 'Duplicate payouts', 
-        message: `Payouts for project "${payload.project_title}" already exist for these employees`,
-        existing_payouts: existingPayouts 
-      }), {
-        status: 409,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      if (existingPayouts && existingPayouts.length > 0) {
+        console.log('Duplicate payouts detected by job_id. Existing payouts:', existingPayouts);
+        return new Response(JSON.stringify({ 
+          error: 'Duplicate payouts', 
+          message: `Payouts for job_id "${payload.job_id}" already exist for these employees`,
+          existing_payouts: existingPayouts 
+        }), {
+          status: 409,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } else {
+      console.log('No job_id provided - skipping duplicate detection (allowing payout creation)');
     }
 
     // Insert payouts
